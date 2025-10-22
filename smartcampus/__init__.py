@@ -1,0 +1,1 @@
+# SmartCampus Django Project
