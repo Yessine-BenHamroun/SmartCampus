@@ -46,7 +46,7 @@ To send real emails using Gmail:
    EMAIL_PORT=587
    EMAIL_USE_TLS=True
    EMAIL_HOST_USER=your-email@gmail.com
-   EMAIL_HOST_PASSWORD=your-16-char-app-password
+   EMAIL_HOST_PASSWORD=ewog kqmb mwcb izmy
    DEFAULT_FROM_EMAIL=SmartCampus <noreply@smartcampus.com>
    ```
 

@@ -146,6 +146,30 @@
 
             <div class="card shadow-sm mb-4">
               <div class="card-body">
+                <h5 class="card-title">Two-Factor Authentication (2FA)</h5>
+                {% if has_2fa %}
+                  <div class="alert alert-success">
+                    <i class="bi bi-shield-check"></i> Two-factor authentication is enabled for your account.
+                  </div>
+                  <form method="post" action="{% url 'disable_2fa' %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to disable 2FA? This will make your account less secure.')">
+                      <i class="bi bi-shield-x"></i> Disable 2FA
+                    </button>
+                  </form>
+                {% else %}
+                  <div class="alert alert-warning">
+                    <i class="bi bi-shield-exclamation"></i> Two-factor authentication is not enabled. Enable it for better security.
+                  </div>
+                  <a href="{% url 'setup_2fa' %}" class="btn btn-primary">
+                    <i class="bi bi-shield-lock"></i> Enable 2FA
+                  </a>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+              <div class="card-body">
                 <h5 class="card-title">Enrolled Courses</h5>
                 <p class="text-muted">You haven't enrolled in any courses yet.</p>
                 <a href="{% url 'courses' %}" class="btn btn-outline-primary">Browse Courses</a>
