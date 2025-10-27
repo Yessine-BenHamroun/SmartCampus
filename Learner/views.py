@@ -1,4 +1,8 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.contrib.auth import login, authenticate, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from .forms import RegisterForm, LoginForm
 
 # Create your views here.
 
@@ -65,3 +69,84 @@ def starter_page(request):
 def error_404(request, exception=None):
     """Custom 404 error page view"""
     return render(request, 'learner/404.html', status=404)
+
+
+# Authentication Views
+
+def register_view(request):
+    """User registration view"""
+    if request.user.is_authenticated:
+        return redirect('index')
+    
+    if request.method == 'POST':
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            username = form.cleaned_data.get('username')
+            messages.success(request, f'Account created for {username}! You can now log in.')
+            return redirect('login')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = RegisterForm()
+    
+    return render(request, 'learner/register.html', {'form': form})
+
+
+def login_view(request):
+    """User login view"""
+    if request.user.is_authenticated:
+        return redirect('index')
+    
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            messages.success(request, f'Welcome back, {username}!')
+            next_url = request.GET.get('next', 'index')
+            return redirect(next_url)
+        else:
+            messages.error(request, 'Invalid username or password. Please try again.')
+            form = LoginForm()
+    else:
+        form = LoginForm()
+    
+    return render(request, 'learner/login.html', {'form': form})
+
+
+def logout_view(request):
+    """User logout view"""
+    logout(request)
+    messages.success(request, 'You have been logged out successfully.')
+    return redirect('index')
+
+
+@login_required
+def profile_view(request):
+    """User profile view"""
+    return render(request, 'learner/profile.html', {'user': request.user})
+
+
+@login_required
+def edit_profile_view(request):
+    """Edit user profile view"""
+    if request.method == 'POST':
+        user = request.user
+        user.first_name = request.POST.get('first_name', '')
+        user.last_name = request.POST.get('last_name', '')
+        user.email = request.POST.get('email', '')
+        
+        # Update password if provided
+        new_password = request.POST.get('new_password', '')
+        if new_password:
+            user.set_password(new_password)
+            messages.success(request, 'Password updated successfully. Please login again.')
+        
+        user.save()
+        messages.success(request, 'Profile updated successfully!')
+        return redirect('profile')
+    
+    return render(request, 'learner/edit_profile.html', {'user': request.user})

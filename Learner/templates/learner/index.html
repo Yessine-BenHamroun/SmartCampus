@@ -26,6 +26,7 @@
 
   <!-- Main CSS File -->
   <link href="{% static 'css/main.css' %}" rel="stylesheet">
+  <link href="{% static 'css/custom.css' %}" rel="stylesheet">
 
   <!-- =======================================================
   * Template Name: Learner
@@ -72,7 +73,22 @@
         <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
       </nav>
 
-      <a class="btn-getstarted" href="{% url 'enroll' %}">Enroll Now</a>
+      {% if user.is_authenticated %}
+      <div class="dropdown">
+        <a class="btn-getstarted dropdown-toggle" href="#" role="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-person-circle"></i> {{ user.username }}
+        </a>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+          <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="bi bi-person"></i> My Profile</a></li>
+          <li><a class="dropdown-item" href="{% url 'edit_profile' %}"><i class="bi bi-gear"></i> Edit Profile</a></li>
+          <li><a class="dropdown-item" href="{% url 'courses' %}"><i class="bi bi-book"></i> My Courses</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+        </ul>
+      </div>
+      {% else %}
+      <a class="btn-getstarted" href="{% url 'login' %}">Login</a>
+      {% endif %}
 
     </div>
   </header>
