@@ -2,6 +2,13 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.contrib.auth.models import User
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.conf import settings
 from .forms import RegisterForm, LoginForm
 
 # Create your views here.
@@ -150,3 +157,75 @@ def edit_profile_view(request):
         return redirect('profile')
     
     return render(request, 'learner/edit_profile.html', {'user': request.user})
+
+
+# Password Reset Views
+
+def forgot_password_view(request):
+    """Forgot password - request reset email"""
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        try:
+            user = User.objects.get(email=email)
+            
+            # Generate token and uid
+            token = default_token_generator.make_token(user)
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            
+            # Build reset URL
+            reset_url = request.build_absolute_uri(
+                f'/reset-password/{uid}/{token}/'
+            )
+            
+            # Send email
+            subject = 'Reset Your SmartCampus Password'
+            message = render_to_string('learner/password_reset_email.html', {
+                'user': user,
+                'reset_url': reset_url,
+            })
+            
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+                html_message=message,
+            )
+            
+            messages.success(request, 'Password reset link has been sent to your email.')
+            return redirect('login')
+            
+        except User.DoesNotExist:
+            messages.error(request, 'No account found with that email address.')
+    
+    return render(request, 'learner/forgot_password.html')
+
+
+def reset_password_view(request, uidb64, token):
+    """Reset password with token"""
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+    
+    if user is not None and default_token_generator.check_token(user, token):
+        if request.method == 'POST':
+            new_password = request.POST.get('new_password')
+            confirm_password = request.POST.get('confirm_password')
+            
+            if new_password == confirm_password:
+                user.set_password(new_password)
+                user.save()
+                messages.success(request, 'Password reset successful! You can now login with your new password.')
+                return redirect('login')
+            else:
+                messages.error(request, 'Passwords do not match.')
+        
+        return render(request, 'learner/reset_password.html', {
+            'validlink': True,
+            'uidb64': uidb64,
+            'token': token
+        })
+    else:
+        return render(request, 'learner/reset_password.html', {'validlink': False})
