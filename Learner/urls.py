@@ -27,7 +27,7 @@ urlpatterns = [
     
     # Password Reset URLs
     path('forgot-password/', views.forgot_password_view, name='forgot_password'),
-    path('reset-password/<uidb64>/<token>/', views.reset_password_view, name='reset_password'),
+    path('reset-password/', views.reset_password_view, name='reset_password'),
     
     # Two-Factor Authentication URLs
     path('setup-2fa/', views.setup_2fa, name='setup_2fa'),
