@@ -30,6 +30,9 @@ class User:
         self.last_login = kwargs.get('last_login')
         self.reset_password_token = kwargs.get('reset_password_token')
         self.reset_password_expires = kwargs.get('reset_password_expires')
+        # 2FA fields
+        self.two_factor_enabled = kwargs.get('two_factor_enabled', False)
+        self.two_factor_secret = kwargs.get('two_factor_secret', '')
     
     @staticmethod
     def get_collection():
@@ -49,10 +52,18 @@ class User:
     @classmethod
     def create(cls, **kwargs):
         """Create a new user"""
+        print("\n" + "="*80)
+        print("🟡 MONGODB MODEL: Creating new user")
+        print("="*80)
+        
         collection = cls.get_collection()
+        print(f"📊 Collection Name: {cls.COLLECTION_NAME}")
+        print(f"🗄️  Database: {collection.database.name}")
+        print(f"🔗 MongoDB Connection: {collection.database.client.address}")
         
         # Hash password before saving
         if 'password' in kwargs:
+            print(f"🔐 Hashing password...")
             kwargs['password'] = cls.hash_password(kwargs['password'])
         
         kwargs['created_at'] = datetime.utcnow()
@@ -61,7 +72,27 @@ class User:
         kwargs['is_verified'] = kwargs.get('is_verified', False)
         kwargs['role'] = kwargs.get('role', 'student')
         
+        print(f"📝 User data to insert:")
+        for key, value in kwargs.items():
+            if key != 'password':
+                print(f"   {key}: {value}")
+        
         result = collection.insert_one(kwargs)
+        print(f"✅ User inserted into MongoDB!")
+        print(f"💾 Inserted ID: {result.inserted_id}")
+        print(f"📧 Email: {kwargs.get('email')}")
+        print(f"👤 Username: {kwargs.get('username')}")
+        
+        # Verify the insertion
+        verification = collection.find_one({'_id': result.inserted_id})
+        if verification:
+            print(f"✅ VERIFIED: User found in database")
+            print(f"   Total users in collection: {collection.count_documents({})}")
+        else:
+            print(f"❌ WARNING: User NOT found after insertion!")
+        
+        print("="*80 + "\n")
+        
         kwargs['_id'] = result.inserted_id
         return cls(**kwargs)
     
