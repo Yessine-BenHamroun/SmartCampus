@@ -6,6 +6,28 @@ from rest_framework.exceptions import AuthenticationFailed
 from users.models import User
 
 
+class AuthenticatedUser:
+    """
+    Simple user wrapper for DRF authentication
+    Makes MongoDB User compatible with DRF's permission system
+    """
+    def __init__(self, user):
+        self.user = user
+        self.id = user.id
+        self.email = user.email
+        self.username = user.username
+        self.role = user.role
+        self.is_active = user.is_active
+        self.is_authenticated = True
+        self.is_anonymous = False
+    
+    def __str__(self):
+        return f"AuthenticatedUser({self.username})"
+    
+    def __repr__(self):
+        return self.__str__()
+
+
 class CustomJWTAuthentication(JWTAuthentication):
     """Custom JWT authentication that works with MongoDB User model"""
     
@@ -24,13 +46,8 @@ class CustomJWTAuthentication(JWTAuthentication):
             if not user.is_active:
                 raise AuthenticationFailed('User is inactive')
             
-            # Return a dictionary with user info for request.user
-            return {
-                'user_id': str(user.id),
-                'email': user.email,
-                'username': user.username,
-                'role': user.role,
-            }
+            # Return an AuthenticatedUser wrapper that's compatible with DRF
+            return AuthenticatedUser(user)
             
         except Exception as e:
             raise AuthenticationFailed(f'Invalid token: {str(e)}')

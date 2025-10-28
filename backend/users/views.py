@@ -27,20 +27,36 @@ class RegisterView(APIView):
     permission_classes = [AllowAny]
     
     def post(self, request):
+        print("\n" + "="*80)
+        print("🟢 BACKEND API: Received registration request")
+        print("="*80)
+        print(f"📥 Request Data: {request.data}")
+        
         serializer = UserRegistrationSerializer(data=request.data)
         
         if serializer.is_valid():
+            print("✅ Serializer validation passed")
             try:
                 # Create user
                 user_data = serializer.validated_data.copy()
                 user_data.pop('confirm_password')
                 
+                print(f"📝 Creating user with data: {user_data}")
                 user = User.create(**user_data)
+                print(f"✅ User created successfully!")
+                print(f"💾 MongoDB User ID: {user.id}")
+                print(f"📧 Email: {user.email}")
+                print(f"👤 Username: {user.username}")
+                print(f"🗄️  Database: smartcampus_db")
+                print(f"📊 Collection: users")
                 
                 # Generate JWT tokens
                 refresh = RefreshToken()
                 refresh['user_id'] = str(user.id)
                 refresh['email'] = user.email
+                
+                print(f"🔑 JWT tokens generated")
+                print("="*80 + "\n")
                 
                 return Response({
                     'message': 'User registered successfully',
@@ -52,11 +68,15 @@ class RegisterView(APIView):
                 }, status=status.HTTP_201_CREATED)
                 
             except Exception as e:
+                print(f"❌ ERROR creating user: {str(e)}")
+                print("="*80 + "\n")
                 return Response({
                     'error': 'Registration failed',
                     'detail': str(e)
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+        print(f"❌ Serializer validation FAILED: {serializer.errors}")
+        print("="*80 + "\n")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -65,39 +85,72 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
     
     def post(self, request):
+        print("\n" + "="*80)
+        print("🟢 BACKEND API: Received login request")
+        print("="*80)
+        print(f"📥 Request Data: {request.data}")
+        
         serializer = UserLoginSerializer(data=request.data)
         
         if serializer.is_valid():
             email = serializer.validated_data['email']
             password = serializer.validated_data['password']
             
+            print(f"✅ Serializer validation passed")
+            print(f"📧 Email: {email}")
+            print(f"🔐 Password: {'*' * len(password)}")
+            print(f"🔍 Searching for user in MongoDB...")
+            
             # Find user
             user = User.find_by_email(email)
             
             if not user:
+                print(f"❌ User NOT FOUND with email: {email}")
+                print(f"💡 Make sure you're using the EMAIL address, not username")
+                print("="*80 + "\n")
                 return Response({
                     'error': 'Invalid credentials'
                 }, status=status.HTTP_401_UNAUTHORIZED)
+            
+            print(f"✅ User FOUND!")
+            print(f"👤 Username: {user.username}")
+            print(f"📧 Email: {user.email}")
+            print(f"💾 User ID: {user.id}")
+            print(f"🔐 Verifying password...")
             
             # Verify password
             if not User.verify_password(password, user.password):
+                print(f"❌ Password verification FAILED!")
+                print(f"💡 The password provided does not match the hashed password in database")
+                print("="*80 + "\n")
                 return Response({
                     'error': 'Invalid credentials'
                 }, status=status.HTTP_401_UNAUTHORIZED)
             
+            print(f"✅ Password verified successfully!")
+            
             # Check if user is active
             if not user.is_active:
+                print(f"❌ User account is DEACTIVATED")
+                print("="*80 + "\n")
                 return Response({
                     'error': 'Account is deactivated'
                 }, status=status.HTTP_403_FORBIDDEN)
             
             # Update last login
+            print(f"✅ User is active!")
+            print(f"🔄 Updating last login timestamp...")
             user.update(last_login=datetime.utcnow())
             
             # Generate JWT tokens
+            print(f"🔑 Generating JWT tokens...")
             refresh = RefreshToken()
             refresh['user_id'] = str(user.id)
             refresh['email'] = user.email
+            
+            print(f"✅ SUCCESS: Login completed!")
+            print(f"🔑 Access Token: {str(refresh.access_token)[:50]}...")
+            print("="*80 + "\n")
             
             return Response({
                 'message': 'Login successful',
@@ -108,6 +161,8 @@ class LoginView(APIView):
                 }
             }, status=status.HTTP_200_OK)
         
+        print(f"❌ Serializer validation FAILED: {serializer.errors}")
+        print("="*80 + "\n")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -139,7 +194,8 @@ class ProfileView(APIView):
     def get(self, request):
         """Get user profile"""
         try:
-            user_id = request.user.get('user_id')
+            # request.user is now an AuthenticatedUser object
+            user_id = request.user.id if hasattr(request.user, 'id') else request.user.get('user_id')
             user = User.find_by_id(user_id)
             
             if not user:
@@ -159,30 +215,52 @@ class ProfileView(APIView):
     def put(self, request):
         """Update user profile"""
         try:
-            user_id = request.user.get('user_id')
+            print("\n" + "="*80)
+            print("🟢 BACKEND API: Received profile update request")
+            print("="*80)
+            print(f"📥 Request Data: {request.data}")
+            print(f"👤 Request User: {request.user}")
+            
+            # request.user is now an AuthenticatedUser object
+            user_id = request.user.id if hasattr(request.user, 'id') else request.user.get('user_id')
+            print(f"💾 User ID: {user_id}")
+            
             user = User.find_by_id(user_id)
             
             if not user:
+                print(f"❌ User NOT FOUND with ID: {user_id}")
+                print("="*80 + "\n")
                 return Response({
                     'error': 'User not found'
                 }, status=status.HTTP_404_NOT_FOUND)
             
+            print(f"✅ User FOUND: {user.username}")
+            
             serializer = UserProfileSerializer(data=request.data, partial=True)
             
             if serializer.is_valid():
+                print(f"✅ Serializer validation passed")
                 # Update allowed fields only
                 allowed_fields = ['first_name', 'last_name', 'phone', 'profile_image', 'bio']
                 update_data = {k: v for k, v in serializer.validated_data.items() if k in allowed_fields}
                 
+                print(f"📝 Updating fields: {update_data}")
                 user.update(**update_data)
+                
+                print(f"✅ Profile updated successfully!")
+                print("="*80 + "\n")
                 
                 return Response({
                     'message': 'Profile updated successfully',
                     'user': user.to_dict()
                 }, status=status.HTTP_200_OK)
             
+            print(f"❌ Serializer validation FAILED: {serializer.errors}")
+            print("="*80 + "\n")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            print(f"❌ ERROR updating profile: {str(e)}")
+            print("="*80 + "\n")
             return Response({
                 'error': 'Failed to update profile',
                 'detail': str(e)
@@ -198,7 +276,8 @@ class ChangePasswordView(APIView):
         
         if serializer.is_valid():
             try:
-                user_id = request.user.get('user_id')
+                # request.user is now an AuthenticatedUser object
+                user_id = request.user.id if hasattr(request.user, 'id') else request.user.get('user_id')
                 user = User.find_by_id(user_id)
                 
                 if not user:

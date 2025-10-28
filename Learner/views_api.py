@@ -126,33 +126,31 @@ def login_view(request):
         return redirect('index')
     
     if request.method == 'POST':
-        form = LoginForm(request.POST)
+        username_or_email = request.POST.get('username')
+        password = request.POST.get('password')
         
-        if form.is_valid():
-            email = form.cleaned_data['email']
-            password = form.cleaned_data['password']
+        backend = APIAuthBackend()
+        
+        # Call backend API to login
+        # Backend uses email, so if user provides username, we try both
+        success, result, tokens = backend.login(
+            email=username_or_email if '@' in username_or_email else None,
+            username=username_or_email if '@' not in username_or_email else None,
+            password=password
+        )
+        
+        if success:
+            # Save user data and tokens in session
+            save_user_session(request, result, tokens)
             
-            backend = APIAuthBackend()
+            username = result.get('username', 'User')
+            messages.success(request, f'Welcome back, {username}!')
             
-            # Backend API only accepts email for login
-            success, result, tokens = backend.login(
-                email=email,
-                password=password
-            )
-            
-            if success:
-                # Save user data and tokens in session
-                save_user_session(request, result, tokens)
-                
-                username = result.get('username', 'User')
-                messages.success(request, f'Welcome back, {username}!')
-                
-                next_url = request.GET.get('next', 'index')
-                return redirect(next_url)
-            else:
-                messages.error(request, result)
+            next_url = request.GET.get('next', 'index')
+            return redirect(next_url)
         else:
-            messages.error(request, 'Please correct the errors below.')
+            messages.error(request, result)
+            form = LoginForm()
     else:
         form = LoginForm()
     
@@ -178,13 +176,9 @@ def profile_view(request):
     """User profile view"""
     user = get_current_user(request)
     
-    # Check 2FA status from backend
-    backend = APIAuthBackend()
-    access_token = get_access_token(request)
-    success, has_2fa = backend.check_2fa_status(access_token)
-    
-    if not success:
-        has_2fa = False  # Default to False if check fails
+    # Note: 2FA is not yet implemented in backend API
+    # We'll handle it differently or add to backend later
+    has_2fa = False  # Placeholder
     
     return render(request, 'learner/profile.html', {
         'has_2fa': has_2fa
@@ -297,87 +291,36 @@ def reset_password_view(request):
     })
 
 
-# 2FA Views - Full Implementation
+# 2FA Views - Note: These are placeholders
+# The backend API doesn't have 2FA implemented yet
+# You can add 2FA to the backend API later and update these
 
 @api_login_required
 def setup_2fa(request):
-    """Setup 2FA - Generate QR code"""
-    backend = APIAuthBackend()
-    access_token = get_access_token(request)
-    
-    # Get QR code and secret from backend
-    success, result = backend.setup_2fa(access_token)
-    
-    if success:
-        # Store secret temporarily in session for verification
-        request.session['temp_2fa_secret'] = result.get('secret')
-        request.session.modified = True
-        
-        return render(request, 'learner/setup_2fa.html', {
-            'qr_code': result.get('qr_code'),
-            'secret': result.get('manual_entry_key')
-        })
-    else:
-        messages.error(request, result)
-        return redirect('profile')
+    """Setup 2FA - placeholder (to be implemented in backend)"""
+    messages.info(request, 'Two-factor authentication will be available soon.')
+    return redirect('profile')
 
 
 @api_login_required
 def verify_2fa_setup(request):
-    """Verify 2FA setup with code"""
-    if request.method == 'POST':
-        code = request.POST.get('code')
-        secret = request.session.get('temp_2fa_secret')
-        
-        if not secret:
-            messages.error(request, 'Setup session expired. Please start again.')
-            return redirect('setup_2fa')
-        
-        backend = APIAuthBackend()
-        access_token = get_access_token(request)
-        
-        success, message = backend.verify_2fa_setup(access_token, secret, code)
-        
-        if success:
-            # Clear temporary secret
-            request.session.pop('temp_2fa_secret', None)
-            request.session.modified = True
-            messages.success(request, '✅ Two-factor authentication enabled successfully!')
-            return redirect('profile')
-        else:
-            messages.error(request, message)
-            return redirect('setup_2fa')
-    
-    return redirect('setup_2fa')
+    """Verify 2FA setup - placeholder"""
+    return redirect('profile')
 
 
 def verify_2fa_login(request):
-    """Verify 2FA during login - placeholder for now"""
-    # TODO: Implement 2FA verification during login flow
-    messages.info(request, '2FA verification during login will be enhanced soon.')
+    """Verify 2FA during login - placeholder"""
     return redirect('login')
 
 
 @api_login_required
 def disable_2fa(request):
-    """Disable 2FA"""
-    if request.method == 'POST':
-        password = request.POST.get('password')
-        
-        if not password:
-            messages.error(request, 'Password is required to disable 2FA.')
-            return redirect('profile')
-        
-        backend = APIAuthBackend()
-        access_token = get_access_token(request)
-        
-        success, message = backend.disable_2fa(access_token, password)
-        
-        if success:
-            messages.success(request, '🔓 ' + message)
-        else:
-            messages.error(request, message)
-        
-        return redirect('profile')
-    
+    """Disable 2FA - placeholder"""
+    messages.info(request, 'Two-factor authentication is not currently enabled.')
     return redirect('profile')
+
+
+@api_login_required
+def qr_code(request):
+    """Generate QR code for 2FA - placeholder"""
+    return HttpResponse("2FA not yet implemented", status=404)

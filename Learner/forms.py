@@ -60,17 +60,19 @@ class RegisterForm(UserCreationForm):
         return user
 
 
-class LoginForm(AuthenticationForm):
-    """Custom login form with styled fields"""
-    username = forms.CharField(
-        widget=forms.TextInput(attrs={
+class LoginForm(forms.Form):
+    """Custom login form - uses email instead of username for MongoDB backend"""
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Username'
+            'placeholder': 'Email Address',
+            'autocomplete': 'email'
         })
     )
     password = forms.CharField(
         widget=forms.PasswordInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Password'
+            'placeholder': 'Password',
+            'autocomplete': 'current-password'
         })
     )

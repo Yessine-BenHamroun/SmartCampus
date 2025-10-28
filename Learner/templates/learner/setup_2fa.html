@@ -48,35 +48,81 @@
                 {% endif %}
 
                 <div class="text-center mb-4">
-                  <i class="bi bi-envelope-check" style="font-size: 4rem; color: #5fcf80;"></i>
-                  <p class="mt-3 mb-3">A 6-digit verification code has been sent to your email address:</p>
-                  <div class="alert alert-info">
-                    <strong>{{ user_email }}</strong>
-                  </div>
-                  <p class="text-muted small">Please check your inbox (and spam folder) and enter the code below.</p>
+                  <i class="bi bi-shield-check" style="font-size: 4rem; color: #5fcf80;"></i>
+                  <p class="mt-3">Follow these steps to enable Two-Factor Authentication:</p>
                 </div>
 
-                <form method="post" action="{% url 'verify_2fa_setup' %}">
-                  {% csrf_token %}
-                  <div class="mb-3">
-                    <label for="token" class="form-label">Enter the 6-digit code from your email</label>
-                    <input type="text" class="form-control text-center" id="token" name="token" 
-                           maxlength="6" pattern="[0-9]{6}" required 
-                           placeholder="000000" style="font-size: 1.5rem; letter-spacing: 0.5rem;">
+                <!-- Step 1: Download Authenticator App -->
+                <div class="mb-4">
+                  <h5 class="text-primary"><span class="badge bg-primary me-2">1</span>Download an Authenticator App</h5>
+                  <p class="ms-5 text-muted">Install one of these apps on your smartphone:</p>
+                  <div class="ms-5">
+                    <ul class="list-unstyled">
+                      <li><i class="bi bi-google text-primary"></i> Google Authenticator (Android/iOS)</li>
+                      <li><i class="bi bi-microsoft text-info"></i> Microsoft Authenticator (Android/iOS)</li>
+                      <li><i class="bi bi-app-indicator"></i> Authy (Android/iOS/Desktop)</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- Step 2: Scan QR Code -->
+                <div class="mb-4">
+                  <h5 class="text-primary"><span class="badge bg-primary me-2">2</span>Scan this QR Code</h5>
+                  <p class="ms-5 text-muted">Open your authenticator app and scan this QR code:</p>
+                  <div class="text-center p-4 bg-white border rounded">
+                    {% if qr_code %}
+                      <img src="data:image/png;base64,{{ qr_code }}" alt="2FA QR Code" class="img-fluid" style="max-width: 300px;">
+                    {% else %}
+                      <div class="alert alert-danger">QR Code not available. Please try again.</div>
+                    {% endif %}
                   </div>
                   
-                  <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-primary btn-lg">Verify and Enable 2FA</button>
-                    <a href="{% url 'profile' %}" class="btn btn-outline-secondary">Cancel</a>
+                  <!-- Manual Entry Alternative -->
+                  <div class="mt-3 ms-5">
+                    <p class="text-muted small mb-1">Can't scan? Enter this code manually:</p>
+                    <div class="input-group">
+                      <input type="text" class="form-control font-monospace" id="manualKey" value="{{ secret }}" readonly>
+                      <button class="btn btn-outline-secondary" type="button" onclick="copyKey()">
+                        <i class="bi bi-clipboard"></i> Copy
+                      </button>
+                    </div>
                   </div>
-                </form>
+                </div>
 
-                <div class="mt-4 alert alert-warning">
-                  <h6><i class="bi bi-info-circle"></i> Important Notes:</h6>
-                  <ul class="text-muted mb-0">
-                    <li>The verification code will expire in 5 minutes</li>
-                    <li>If you don't receive the email, check your spam folder</li>
-                    <li>After enabling 2FA, you'll receive a code via email each time you log in</li>
+                <!-- Step 3: Verify -->
+                <div class="mb-4">
+                  <h5 class="text-primary"><span class="badge bg-primary me-2">3</span>Verify Setup</h5>
+                  <p class="ms-5 text-muted">Enter the 6-digit code from your authenticator app to verify:</p>
+                  
+                  <form method="post" action="{% url 'verify_2fa_setup' %}" class="ms-5">
+                    {% csrf_token %}
+                    <input type="hidden" name="secret" value="{{ secret }}">
+                    <div class="mb-3">
+                      <label for="code" class="form-label">Verification Code</label>
+                      <input type="text" class="form-control text-center" id="code" name="code" 
+                             maxlength="6" pattern="[0-9]{6}" required 
+                             placeholder="000000" style="font-size: 1.5rem; letter-spacing: 0.5rem;"
+                             autocomplete="off">
+                      <div class="form-text">Enter the 6-digit code displayed in your app</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                      <button type="submit" class="btn btn-success btn-lg">
+                        <i class="bi bi-check-circle"></i> Verify and Enable 2FA
+                      </button>
+                      <a href="{% url 'profile' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                  </form>
+                </div>
+
+                <!-- Important Notes -->
+                <div class="alert alert-info">
+                  <h6><i class="bi bi-info-circle"></i> Important Security Notes:</h6>
+                  <ul class="mb-0 small">
+                    <li>Save your secret key in a secure location as a backup</li>
+                    <li>You'll need your authenticator app to log in after enabling 2FA</li>
+                    <li>The code changes every 30 seconds</li>
+                    <li>If you lose access to your authenticator app, contact support</li>
                   </ul>
                 </div>
               </div>
@@ -93,6 +139,39 @@
 
   <!-- Main JS File -->
   <script src="{% static 'js/main.js' %}"></script>
+
+  <script>
+    function copyKey() {
+      const keyInput = document.getElementById('manualKey');
+      keyInput.select();
+      keyInput.setSelectionRange(0, 99999); // For mobile devices
+      
+      navigator.clipboard.writeText(keyInput.value).then(() => {
+        // Change button text temporarily
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check"></i> Copied!';
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-success');
+        
+        setTimeout(() => {
+          btn.innerHTML = originalHTML;
+          btn.classList.remove('btn-success');
+          btn.classList.add('btn-outline-secondary');
+        }, 2000);
+      }).catch(err => {
+        alert('Failed to copy: ' + err);
+      });
+    }
+
+    // Auto-focus on code input
+    document.addEventListener('DOMContentLoaded', function() {
+      const codeInput = document.getElementById('code');
+      if (codeInput) {
+        codeInput.focus();
+      }
+    });
+  </script>
 
 </body>
 </html>
