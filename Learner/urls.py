@@ -17,4 +17,22 @@ urlpatterns = [
     path('privacy/', views.privacy, name='privacy'),
     path('terms/', views.terms, name='terms'),
     path('starter-page/', views.starter_page, name='starter_page'),
+    
+    # Authentication URLs
+    path('register/', views.register_view, name='register'),
+    path('login/', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
+    path('profile/', views.profile_view, name='profile'),
+    path('profile/edit/', views.edit_profile_view, name='edit_profile'),
+    
+    # Password Reset URLs
+    path('forgot-password/', views.forgot_password_view, name='forgot_password'),
+    path('reset-password/<uidb64>/<token>/', views.reset_password_view, name='reset_password'),
+    
+    # Two-Factor Authentication URLs
+    path('setup-2fa/', views.setup_2fa, name='setup_2fa'),
+    path('qr-code/', views.qr_code, name='qr_code'),
+    path('verify-2fa-setup/', views.verify_2fa_setup, name='verify_2fa_setup'),
+    path('verify-2fa-login/', views.verify_2fa_login, name='verify_2fa_login'),
+    path('disable-2fa/', views.disable_2fa, name='disable_2fa'),
 ]

@@ -1,0 +1,99 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Verify Two-Factor Authentication - SmartCampus</title>
+  <meta content="" name="description">
+  <meta content="" name="keywords">
+
+  <!-- Favicons -->
+  <link href="{% static 'img/favicon.png' %}" rel="icon">
+  <link href="{% static 'img/apple-touch-icon.png' %}" rel="apple-touch-icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+  <link href="{% static 'vendor/bootstrap-icons/bootstrap-icons.css' %}" rel="stylesheet">
+  <link href="{% static 'vendor/aos/aos.css' %}" rel="stylesheet">
+
+  <!-- Main CSS File -->
+  <link href="{% static 'css/main.css' %}" rel="stylesheet">
+</head>
+
+<body class="index-page">
+
+  <main class="main">
+    <section class="section">
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-lg-6">
+            <div class="card shadow">
+              <div class="card-body p-5">
+                <div class="text-center mb-4">
+                  <i class="bi bi-envelope-check" style="font-size: 4rem; color: var(--accent-color);"></i>
+                  <h2 class="mt-3">Email Verification</h2>
+                  <p class="text-muted">Enter the 6-digit code sent to your email</p>
+                </div>
+                
+                {% if messages %}
+                  {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                      {{ message }}
+                      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                  {% endfor %}
+                {% endif %}
+
+                <form method="post" action="{% url 'verify_2fa_login' %}">
+                  {% csrf_token %}
+                  <div class="mb-4">
+                    <label for="token" class="form-label">Verification Code</label>
+                    <input type="text" class="form-control text-center" id="token" name="token" 
+                           maxlength="6" pattern="[0-9]{6}" required autofocus
+                           placeholder="000000" style="font-size: 2rem; letter-spacing: 1rem;">
+                    <div class="form-text text-center">Check your email for the 6-digit code</div>
+                  </div>
+                  
+                  <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">Verify</button>
+                    <a href="{% url 'logout' %}" class="btn btn-outline-secondary">Cancel and Logout</a>
+                  </div>
+                </form>
+
+                <div class="mt-4 text-center">
+                  <p class="text-muted small mb-0">Didn't receive the code?</p>
+                  <a href="{% url 'login' %}" class="small">Try logging in again</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Vendor JS Files -->
+  <script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'vendor/aos/aos.js' %}"></script>
+
+  <!-- Main JS File -->
+  <script src="{% static 'js/main.js' %}"></script>
+
+  <script>
+    // Auto-submit when 6 digits are entered
+    document.getElementById('token').addEventListener('input', function(e) {
+      if (this.value.length === 6) {
+        this.form.submit();
+      }
+    });
+  </script>
+
+</body>
+</html>
