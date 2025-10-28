@@ -1,37 +1,37 @@
 /* User Dropdown Styling */
 .dropdown .btn-getstarted {
-    display: flex !important;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
 }
 
 .dropdown .btn-getstarted i.bi-person-circle {
-    font-size: 1.5rem;
+  font-size: 1.5rem;
 }
 
 .dropdown-menu {
-    min-width: 200px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    border: 1px solid #e0e0e0;
+  min-width: 200px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
 }
 
 .dropdown-item {
-    padding: 0.5rem 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .dropdown-item:hover {
-    background-color: #f8f9fa;
-    color: #136ad5;
+  background-color: #f8f9fa;
+  color: #136ad5;
 }
 
 .dropdown-item i {
-    width: 20px;
+  width: 20px;
 }
 
 .dropdown-divider {
-    margin: 0.5rem 0;
+  margin: 0.5rem 0;
 }
