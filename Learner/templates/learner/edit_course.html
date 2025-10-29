@@ -136,6 +136,13 @@
             </div>
           </div>
           
+          <!-- Add Assignment Button -->
+          <div class="mb-3">
+            <a href="{% url 'create_assignment' course_id=course.id %}" class="btn btn-outline-success w-100">
+              <i class="bi bi-file-earmark-text"></i> Add Assignment
+            </a>
+          </div>
+          
           {% if course.modules %}
             <div class="modules-list">
               {% for module in course.modules %}
@@ -153,12 +160,19 @@
                   <ul class="lessons-list">
                     {% for lesson in module.lessons %}
                     <li>
-                      <i class="bi bi-{% if lesson.content_type == 'video' %}play-circle{% elif lesson.content_type == 'quiz' %}question-circle{% elif lesson.content_type == 'text' %}file-text{% else %}file-earmark{% endif %}"></i>
-                      {{ lesson.title }}
-                      <small class="text-muted">({{ lesson.duration_minutes }} min)</small>
-                      {% if lesson.resources %}
-                        <i class="bi bi-paperclip text-primary ms-1" title="{{ lesson.resources|length }} attachment(s)"></i>
-                      {% endif %}
+                      <div class="lesson-item-content">
+                        <div class="lesson-info">
+                          <i class="bi bi-{% if lesson.content_type == 'video' %}play-circle{% elif lesson.content_type == 'quiz' %}question-circle{% elif lesson.content_type == 'text' %}file-text{% else %}file-earmark{% endif %}"></i>
+                          {{ lesson.title }}
+                          <small class="text-muted">({{ lesson.duration_minutes }} min)</small>
+                          {% if lesson.resources %}
+                            <i class="bi bi-paperclip text-primary ms-1" title="{{ lesson.resources|length }} attachment(s)"></i>
+                          {% endif %}
+                        </div>
+                        <a href="{% url 'create_quiz' lesson_id=lesson.id %}" class="btn btn-sm btn-outline-info" title="Add Quiz to this lesson">
+                          <i class="bi bi-question-circle"></i>
+                        </a>
+                      </div>
                     </li>
                     {% endfor %}
                   </ul>
@@ -397,13 +411,30 @@
   margin-left: 10px;
   font-size: 0.9rem;
   color: var(--default-color);
+}
+
+.lesson-item-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.lesson-info {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1;
 }
 
 .lessons-list li i {
   color: var(--accent-color);
+}
+
+.lessons-list .btn-sm {
+  padding: 2px 8px;
+  font-size: 0.75rem;
 }
 
 .empty-curriculum {

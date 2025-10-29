@@ -1,0 +1,429 @@
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}Create Quiz - SmartCampus{% endblock %}
+
+{% block body_class %}create-quiz-page{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<section class="page-header section light-background">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-12" data-aos="fade-up">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'instructor_dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'instructor_courses' %}">My Courses</a></li>
+            <li class="breadcrumb-item active">Create Quiz</li>
+          </ol>
+        </nav>
+        <h1>Create Quiz for Lesson</h1>
+        <p>Create an assessment to test student knowledge</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Create Quiz Form -->
+<section class="create-quiz-section section">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-10 mx-auto">
+        <div class="course-form-card" data-aos="fade-up">
+          
+          <!-- AI Generation Option -->
+          <div class="alert alert-info mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <i class="bi bi-magic"></i>
+                <strong>Need help?</strong> Let AI generate quiz questions based on your lesson content
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" id="generateAIBtn">
+                <i class="bi bi-stars"></i> Generate with AI
+              </button>
+            </div>
+          </div>
+
+          <form method="post" id="createQuizForm">
+            {% csrf_token %}
+            
+            <!-- Basic Information -->
+            <div class="form-section">
+              <h3><i class="bi bi-info-circle"></i> Quiz Information</h3>
+              
+              <div class="mb-4">
+                <label for="title" class="form-label">Quiz Title <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="title" name="title" required 
+                       placeholder="e.g., Introduction to Python - Quiz">
+              </div>
+              
+              <div class="mb-4">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="3"
+                          placeholder="Brief description of what this quiz covers..."></textarea>
+              </div>
+
+              <div class="row mb-4">
+                <div class="col-md-4">
+                  <label for="passing_score" class="form-label">Passing Score (%)</label>
+                  <input type="number" class="form-control" id="passing_score" name="passing_score" 
+                         value="70" min="0" max="100" required>
+                </div>
+                <div class="col-md-4">
+                  <label for="time_limit_minutes" class="form-label">Time Limit (minutes)</label>
+                  <input type="number" class="form-control" id="time_limit_minutes" name="time_limit_minutes" 
+                         value="0" min="0" placeholder="0 = No limit">
+                </div>
+                <div class="col-md-4">
+                  <label for="max_attempts" class="form-label">Max Attempts</label>
+                  <input type="number" class="form-control" id="max_attempts" name="max_attempts" 
+                         value="0" min="0" placeholder="0 = Unlimited">
+                </div>
+              </div>
+
+              <div class="row mb-4">
+                <div class="col-md-6">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="shuffle_questions" name="shuffle_questions">
+                    <label class="form-check-label" for="shuffle_questions">
+                      Shuffle Questions
+                    </label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="show_correct_answers" name="show_correct_answers" checked>
+                    <label class="form-check-label" for="show_correct_answers">
+                      Show Correct Answers After Submission
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Questions Section -->
+            <div class="form-section">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3><i class="bi bi-question-circle"></i> Questions</h3>
+                <button type="button" class="btn btn-success btn-sm" id="addQuestionBtn">
+                  <i class="bi bi-plus-circle"></i> Add Question
+                </button>
+              </div>
+
+              <div id="questionsContainer">
+                <!-- Questions will be added here dynamically -->
+              </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="form-actions">
+              <button type="submit" name="action" value="save_draft" class="btn btn-secondary">
+                <i class="bi bi-save"></i> Save as Draft
+              </button>
+              <button type="submit" name="action" value="publish" class="btn btn-primary">
+                <i class="bi bi-check-circle"></i> Create & Publish
+              </button>
+              <a href="{% url 'instructor_courses' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-x-circle"></i> Cancel
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Question Template (Hidden) -->
+<template id="questionTemplate">
+  <div class="question-card mb-4" data-question-index="">
+    <div class="question-header">
+      <h5>Question <span class="question-number"></span></h5>
+      <button type="button" class="btn btn-danger btn-sm remove-question-btn">
+        <i class="bi bi-trash"></i>
+      </button>
+    </div>
+    <div class="question-body">
+      <div class="mb-3">
+        <label class="form-label">Question Text <span class="text-danger">*</span></label>
+        <textarea class="form-control question-text" rows="2" required
+                  placeholder="Enter your question..."></textarea>
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Options <span class="text-danger">*</span></label>
+        <div class="options-container">
+          <div class="option-item mb-2">
+            <div class="input-group">
+              <div class="input-group-text">
+                <input type="radio" class="form-check-input correct-answer-radio" name="correct_answer_">
+              </div>
+              <input type="text" class="form-control option-input" placeholder="Option A" required>
+            </div>
+          </div>
+          <div class="option-item mb-2">
+            <div class="input-group">
+              <div class="input-group-text">
+                <input type="radio" class="form-check-input correct-answer-radio" name="correct_answer_">
+              </div>
+              <input type="text" class="form-control option-input" placeholder="Option B" required>
+            </div>
+          </div>
+          <div class="option-item mb-2">
+            <div class="input-group">
+              <div class="input-group-text">
+                <input type="radio" class="form-check-input correct-answer-radio" name="correct_answer_">
+              </div>
+              <input type="text" class="form-control option-input" placeholder="Option C" required>
+            </div>
+          </div>
+          <div class="option-item mb-2">
+            <div class="input-group">
+              <div class="input-group-text">
+                <input type="radio" class="form-check-input correct-answer-radio" name="correct_answer_">
+              </div>
+              <input type="text" class="form-control option-input" placeholder="Option D" required>
+            </div>
+          </div>
+        </div>
+        <small class="text-muted">Select the correct answer by clicking the radio button</small>
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Points</label>
+        <input type="number" class="form-control question-points" value="1" min="1" max="10">
+      </div>
+    </div>
+  </div>
+</template>
+
+<style>
+.question-card {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  background: #fff;
+}
+
+.question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #f8f9fa;
+}
+
+.question-body {
+  padding: 10px 0;
+}
+
+.option-item {
+  transition: all 0.3s ease;
+}
+
+.option-item:hover {
+  background: #f8f9fa;
+  padding: 5px;
+  border-radius: 4px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 2px solid #f8f9fa;
+}
+</style>
+
+<script>
+let questionCount = 0;
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Add first question by default
+  addQuestion();
+  
+  // Add Question Button
+  document.getElementById('addQuestionBtn').addEventListener('click', addQuestion);
+  
+  // Generate AI Button
+  document.getElementById('generateAIBtn').addEventListener('click', generateWithAI);
+  
+  // Form Submit
+  document.getElementById('createQuizForm').addEventListener('submit', handleSubmit);
+});
+
+function addQuestion() {
+  questionCount++;
+  const template = document.getElementById('questionTemplate');
+  const clone = template.content.cloneNode(true);
+  
+  // Update question number
+  clone.querySelector('.question-number').textContent = questionCount;
+  clone.querySelector('.question-card').setAttribute('data-question-index', questionCount);
+  
+  // Update radio button names to be unique per question
+  const radioButtons = clone.querySelectorAll('.correct-answer-radio');
+  radioButtons.forEach(radio => {
+    radio.name = `correct_answer_${questionCount}`;
+  });
+  
+  // Add remove button handler
+  clone.querySelector('.remove-question-btn').addEventListener('click', function() {
+    this.closest('.question-card').remove();
+    updateQuestionNumbers();
+  });
+  
+  document.getElementById('questionsContainer').appendChild(clone);
+}
+
+function updateQuestionNumbers() {
+  const questions = document.querySelectorAll('.question-card');
+  questions.forEach((question, index) => {
+    question.querySelector('.question-number').textContent = index + 1;
+    question.setAttribute('data-question-index', index + 1);
+  });
+  questionCount = questions.length;
+}
+
+function generateWithAI() {
+  const lessonId = '{{ lesson_id }}';
+  const numQuestions = prompt('How many questions would you like to generate?', '5');
+  
+  if (!numQuestions) return;
+  
+  // Show loading
+  const btn = document.getElementById('generateAIBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generating...';
+  
+  // Call AI generation API
+  fetch(`/api/courses/instructor/lesson/${lessonId}/quiz/generate/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+    },
+    body: JSON.stringify({
+      num_questions: parseInt(numQuestions),
+      difficulty: 'medium'
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.generated_questions) {
+      // Clear existing questions
+      document.getElementById('questionsContainer').innerHTML = '';
+      questionCount = 0;
+      
+      // Add generated questions
+      data.generated_questions.forEach(q => {
+        addQuestion();
+        const lastQuestion = document.querySelector('.question-card:last-child');
+        lastQuestion.querySelector('.question-text').value = q.question_text;
+        
+        const options = lastQuestion.querySelectorAll('.option-input');
+        q.options.forEach((opt, idx) => {
+          if (options[idx]) options[idx].value = opt;
+        });
+        
+        const radios = lastQuestion.querySelectorAll('.correct-answer-radio');
+        if (radios[q.correct_answer]) {
+          radios[q.correct_answer].checked = true;
+        }
+        
+        lastQuestion.querySelector('.question-points').value = q.points || 1;
+      });
+      
+      alert('Questions generated successfully! Please review and edit as needed.');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Failed to generate questions. Please try again.');
+  })
+  .finally(() => {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-stars"></i> Generate with AI';
+  });
+}
+
+function handleSubmit(e) {
+  e.preventDefault();
+  
+  // Collect form data
+  const formData = {
+    lesson_id: '{{ lesson_id }}',
+    course_id: '{{ course_id }}',
+    title: document.getElementById('title').value,
+    description: document.getElementById('description').value,
+    passing_score: parseInt(document.getElementById('passing_score').value),
+    time_limit_minutes: parseInt(document.getElementById('time_limit_minutes').value),
+    max_attempts: parseInt(document.getElementById('max_attempts').value),
+    shuffle_questions: document.getElementById('shuffle_questions').checked,
+    show_correct_answers: document.getElementById('show_correct_answers').checked,
+    is_published: e.submitter.value === 'publish',
+    questions: []
+  };
+  
+  // Collect questions
+  const questionCards = document.querySelectorAll('.question-card');
+  questionCards.forEach(card => {
+    const questionText = card.querySelector('.question-text').value;
+    const options = Array.from(card.querySelectorAll('.option-input')).map(input => input.value);
+    const correctAnswerRadio = card.querySelector('.correct-answer-radio:checked');
+    const correctAnswer = correctAnswerRadio ? Array.from(card.querySelectorAll('.correct-answer-radio')).indexOf(correctAnswerRadio) : 0;
+    const points = parseInt(card.querySelector('.question-points').value);
+    
+    formData.questions.push({
+      question_text: questionText,
+      options: options,
+      correct_answer: correctAnswer,
+      points: points
+    });
+  });
+  
+  // Validate
+  if (formData.questions.length === 0) {
+    alert('Please add at least one question');
+    return;
+  }
+  
+  // Submit to API
+  const submitBtn = e.submitter;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creating...';
+  
+  fetch(`/api/courses/instructor/lesson/{{ lesson_id }}/quiz/create/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+    },
+    body: JSON.stringify(formData)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.id) {
+      alert('Quiz created successfully!');
+      window.location.href = '{% url "instructor_courses" %}';
+    } else {
+      alert('Error: ' + (data.error || 'Failed to create quiz'));
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Failed to create quiz. Please try again.');
+  })
+  .finally(() => {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = e.submitter.value === 'publish' ? 
+      '<i class="bi bi-check-circle"></i> Create & Publish' : 
+      '<i class="bi bi-save"></i> Save as Draft';
+  });
+}
+</script>
+{% endblock %}

@@ -79,7 +79,7 @@ class CourseListView(APIView):
         """Create a new course (instructor only)"""
         try:
             # Check if user is instructor
-            user_id = request.user.get('user_id')
+            user_id = str(request.user.id)
             user = User.find_by_id(user_id)
             
             if not user or user.role not in ['instructor', 'admin']:
@@ -162,7 +162,7 @@ class CourseDetailView(APIView):
                 }, status=status.HTTP_404_NOT_FOUND)
             
             # Check if user is the course instructor
-            user_id = request.user.get('user_id')
+            user_id = str(request.user.id)
             if str(course.instructor_id) != user_id:
                 return Response({
                     'error': 'Only course instructor can update this course'
@@ -197,7 +197,7 @@ class CourseDetailView(APIView):
                 }, status=status.HTTP_404_NOT_FOUND)
             
             # Check if user is the course instructor
-            user_id = request.user.get('user_id')
+            user_id = str(request.user.id)
             if str(course.instructor_id) != user_id:
                 return Response({
                     'error': 'Only course instructor can delete this course'
@@ -223,7 +223,14 @@ class EnrollCourseView(APIView):
     def post(self, request, course_id):
         """Enroll student in course"""
         try:
-            student_id = request.user.get('user_id')
+            student_id = str(request.user.id)
+            
+            # Check if user is an instructor
+            user = User.find_by_id(student_id)
+            if user and user.role == 'instructor':
+                return Response({
+                    'error': 'Instructors cannot enroll in courses. You can only create and manage courses.'
+                }, status=status.HTTP_403_FORBIDDEN)
             
             # Check if course exists
             course = Course.find_by_id(course_id)
@@ -267,7 +274,7 @@ class MyEnrollmentsView(APIView):
     def get(self, request):
         """Get all enrollments for logged-in student"""
         try:
-            student_id = request.user.get('user_id')
+            student_id = str(request.user.id)
             enrollments = Enrollment.find_by_student(student_id)
             
             enrollments_data = []
@@ -300,7 +307,7 @@ class UpdateProgressView(APIView):
     def put(self, request, course_id):
         """Update progress for a course"""
         try:
-            student_id = request.user.get('user_id')
+            student_id = str(request.user.id)
             
             enrollment = Enrollment.find_one(student_id, course_id)
             if not enrollment:
@@ -372,7 +379,7 @@ class CourseReviewsView(APIView):
     def post(self, request, course_id):
         """Create a review for a course"""
         try:
-            student_id = request.user.get('user_id')
+            student_id = str(request.user.id)
             
             # Check if enrolled
             enrollment = Enrollment.find_one(student_id, course_id)

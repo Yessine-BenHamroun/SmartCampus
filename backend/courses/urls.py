@@ -24,6 +24,33 @@ from courses.views_instructor import (
     create_lesson,
     manage_lesson
 )
+from courses.views_quiz import (
+    create_quiz,
+    manage_quiz,
+    get_lesson_quiz,
+    submit_quiz,
+    get_quiz_attempts,
+    get_my_quiz_attempts,
+    get_course_quizzes
+)
+from courses.views_assignment import (
+    create_assignment,
+    manage_assignment,
+    get_course_assignments,
+    get_assignment_detail,
+    submit_assignment,
+    grade_assignment,
+    get_assignment_submissions,
+    get_my_assignment_submissions,
+    get_submission_detail,
+    validate_code_syntax
+)
+from courses.views_ai import (
+    generate_quiz_ai,
+    create_quiz_from_ai,
+    generate_assignment_ai,
+    create_assignment_from_ai
+)
 
 app_name = 'courses'
 
@@ -37,6 +64,37 @@ urlpatterns = [
     path('instructor/module/<str:module_id>/lessons/', create_lesson, name='create-lesson'),
     path('instructor/module/<str:module_id>/', manage_module, name='manage-module'),
     path('instructor/lesson/<str:lesson_id>/', manage_lesson, name='manage-lesson'),
+    
+    # Quiz Management (Instructor)
+    path('instructor/lesson/<str:lesson_id>/quiz/create/', create_quiz, name='create-quiz'),
+    path('instructor/quiz/<str:quiz_id>/', manage_quiz, name='manage-quiz'),
+    path('instructor/quiz/<str:quiz_id>/attempts/', get_quiz_attempts, name='get-quiz-attempts'),
+    
+    # Assignment Management (Instructor)
+    path('instructor/course/<str:course_id>/assignment/create/', create_assignment, name='create-assignment'),
+    path('instructor/assignment/<str:assignment_id>/', manage_assignment, name='manage-assignment'),
+    path('instructor/assignment/<str:assignment_id>/submissions/', get_assignment_submissions, name='get-assignment-submissions'),
+    path('instructor/submission/<str:submission_id>/grade/', grade_assignment, name='grade-assignment'),
+    
+    # AI Generation (Instructor)
+    path('instructor/lesson/<str:lesson_id>/quiz/generate/', generate_quiz_ai, name='generate-quiz-ai'),
+    path('instructor/lesson/<str:lesson_id>/quiz/create-from-ai/', create_quiz_from_ai, name='create-quiz-from-ai'),
+    path('instructor/course/<str:course_id>/assignment/generate/', generate_assignment_ai, name='generate-assignment-ai'),
+    path('instructor/course/<str:course_id>/assignment/create-from-ai/', create_assignment_from_ai, name='create-assignment-from-ai'),
+    
+    # Quiz (Student)
+    path('lesson/<str:lesson_id>/quiz/', get_lesson_quiz, name='get-lesson-quiz'),
+    path('quiz/<str:quiz_id>/submit/', submit_quiz, name='submit-quiz'),
+    path('quiz/<str:quiz_id>/my-attempts/', get_my_quiz_attempts, name='get-my-quiz-attempts'),
+    path('course/<str:course_id>/quizzes/', get_course_quizzes, name='get-course-quizzes'),
+    
+    # Assignment (Student)
+    path('course/<str:course_id>/assignments/', get_course_assignments, name='get-course-assignments'),
+    path('assignment/<str:assignment_id>/', get_assignment_detail, name='get-assignment-detail'),
+    path('assignment/<str:assignment_id>/submit/', submit_assignment, name='submit-assignment'),
+    path('assignment/<str:assignment_id>/my-submissions/', get_my_assignment_submissions, name='get-my-assignment-submissions'),
+    path('submission/<str:submission_id>/', get_submission_detail, name='get-submission-detail'),
+    path('validate-code/', validate_code_syntax, name='validate-code-syntax'),
     
     # Course CRUD
     path('', CourseListView.as_view(), name='course-list'),

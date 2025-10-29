@@ -49,4 +49,17 @@ urlpatterns = [
     path('instructor/courses/<str:course_id>/edit/', views.edit_course_view, name='edit_course'),
     path('instructor/submissions/', views.instructor_submissions_view, name='instructor_submissions'),
     path('instructor/analytics/', views.course_analytics_view, name='course_analytics'),
+    
+    # Quiz URLs
+    path('instructor/lesson/<str:lesson_id>/quiz/create/', views.create_quiz_view, name='create_quiz'),
+    path('quiz/<str:quiz_id>/take/', views.take_quiz_view, name='take_quiz'),
+    
+    # Assignment URLs
+    path('instructor/course/<str:course_id>/assignment/create/', views.create_assignment_view, name='create_assignment'),
+    path('assignment/<str:assignment_id>/take/', views.take_assignment_view, name='take_assignment'),
+    
+    # Management URLs
+    path('instructor/manage-quizzes/', views.manage_quizzes_view, name='manage_quizzes'),
+    path('instructor/manage-assignments/', views.manage_assignments_view, name='manage_assignments'),
+    path('instructor/submission/<str:submission_id>/grade/', views.grade_submission_view, name='grade_submission'),
 ]

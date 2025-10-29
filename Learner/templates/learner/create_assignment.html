@@ -1,0 +1,515 @@
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}Create Assignment - SmartCampus{% endblock %}
+
+{% block body_class %}create-assignment-page{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<section class="page-header section light-background">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-12" data-aos="fade-up">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'instructor_dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'instructor_courses' %}">My Courses</a></li>
+            <li class="breadcrumb-item active">Create Assignment</li>
+          </ol>
+        </nav>
+        <h1>Create Course Assignment</h1>
+        <p>Create a comprehensive assessment for your course</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Create Assignment Form -->
+<section class="create-assignment-section section">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-10 mx-auto">
+        <div class="course-form-card" data-aos="fade-up">
+          
+          <!-- AI Generation Option -->
+          <div class="alert alert-info mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <i class="bi bi-magic"></i>
+                <strong>Need help?</strong> Let AI generate assignment questions based on your course content
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" id="generateAIBtn">
+                <i class="bi bi-stars"></i> Generate with AI
+              </button>
+            </div>
+          </div>
+
+          <form method="post" id="createAssignmentForm">
+            {% csrf_token %}
+            
+            <!-- Basic Information -->
+            <div class="form-section">
+              <h3><i class="bi bi-info-circle"></i> Assignment Information</h3>
+              
+              <div class="mb-4">
+                <label for="title" class="form-label">Assignment Title <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="title" name="title" required 
+                       placeholder="e.g., Final Project - Web Development">
+              </div>
+              
+              <div class="mb-4">
+                <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+                <textarea class="form-control" id="description" name="description" rows="4" required
+                          placeholder="Describe what students need to do in this assignment..."></textarea>
+              </div>
+
+              <div class="mb-4">
+                <label for="assignment_type" class="form-label">Assignment Type <span class="text-danger">*</span></label>
+                <select class="form-select" id="assignment_type" name="assignment_type" required>
+                  <option value="written">Written (MCQ, True/False, Short Answer)</option>
+                  <option value="coding">Coding Challenge</option>
+                  <option value="mixed">Mixed (Both Written & Coding)</option>
+                </select>
+                <small class="text-muted">Choose the type of assignment</small>
+              </div>
+
+              <div class="row mb-4">
+                <div class="col-md-4">
+                  <label for="time_limit_minutes" class="form-label">Time Limit (minutes) <span class="text-danger">*</span></label>
+                  <input type="number" class="form-control" id="time_limit_minutes" name="time_limit_minutes" 
+                         value="60" min="10" required>
+                </div>
+                <div class="col-md-4">
+                  <label for="passing_score" class="form-label">Passing Score (%)</label>
+                  <input type="number" class="form-control" id="passing_score" name="passing_score" 
+                         value="50" min="0" max="100" required>
+                </div>
+                <div class="col-md-4">
+                  <label for="max_attempts" class="form-label">Max Attempts</label>
+                  <input type="number" class="form-control" id="max_attempts" name="max_attempts" 
+                         value="1" min="1">
+                </div>
+              </div>
+            </div>
+
+            <!-- Proctoring Settings -->
+            <div class="form-section">
+              <h3><i class="bi bi-shield-check"></i> Proctoring Settings</h3>
+              
+              <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                <strong>Important:</strong> These settings help maintain academic integrity during the assignment.
+              </div>
+
+              <div class="row mb-4">
+                <div class="col-md-4">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="allow_copy_paste" name="allow_copy_paste">
+                    <label class="form-check-label" for="allow_copy_paste">
+                      Allow Copy/Paste
+                    </label>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="allow_window_switch" name="allow_window_switch">
+                    <label class="form-check-label" for="allow_window_switch">
+                      Allow Window Switching
+                    </label>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <label for="max_warnings" class="form-label">Max Warnings</label>
+                  <input type="number" class="form-control" id="max_warnings" name="max_warnings" 
+                         value="3" min="1" max="10">
+                  <small class="text-muted">Violations before invalidation</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Written Questions Section -->
+            <div class="form-section" id="writtenSection">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3><i class="bi bi-question-circle"></i> Written Questions</h3>
+                <button type="button" class="btn btn-success btn-sm" id="addQuestionBtn">
+                  <i class="bi bi-plus-circle"></i> Add Question
+                </button>
+              </div>
+
+              <div id="questionsContainer">
+                <!-- Questions will be added here dynamically -->
+              </div>
+            </div>
+
+            <!-- Coding Problem Section -->
+            <div class="form-section" id="codingSection" style="display: none;">
+              <h3><i class="bi bi-code-slash"></i> Coding Problem</h3>
+              
+              <div class="mb-4">
+                <label for="coding_description" class="form-label">Problem Description <span class="text-danger">*</span></label>
+                <textarea class="form-control" id="coding_description" rows="4"
+                          placeholder="Describe the coding problem students need to solve..."></textarea>
+              </div>
+
+              <div class="mb-4">
+                <label for="starter_code" class="form-label">Starter Code</label>
+                <textarea class="form-control font-monospace" id="starter_code" rows="8"
+                          placeholder="# Write your solution here&#10;def solve_problem():&#10;    pass"></textarea>
+                <small class="text-muted">Provide initial code template for students</small>
+              </div>
+
+              <div class="mb-4">
+                <label class="form-label">Test Cases</label>
+                <div id="testCasesContainer">
+                  <div class="test-case-item mb-3">
+                    <div class="row">
+                      <div class="col-md-5">
+                        <input type="text" class="form-control test-input" placeholder="Input">
+                      </div>
+                      <div class="col-md-5">
+                        <input type="text" class="form-control test-output" placeholder="Expected Output">
+                      </div>
+                      <div class="col-md-2">
+                        <button type="button" class="btn btn-danger btn-sm remove-test-btn">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="addTestCaseBtn">
+                  <i class="bi bi-plus"></i> Add Test Case
+                </button>
+              </div>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="form-actions">
+              <button type="submit" name="action" value="save_draft" class="btn btn-secondary">
+                <i class="bi bi-save"></i> Save as Draft
+              </button>
+              <button type="submit" name="action" value="publish" class="btn btn-primary">
+                <i class="bi bi-check-circle"></i> Create & Publish
+              </button>
+              <a href="{% url 'instructor_courses' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-x-circle"></i> Cancel
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Question Template (Hidden) -->
+<template id="questionTemplate">
+  <div class="question-card mb-4" data-question-index="">
+    <div class="question-header">
+      <h5>Question <span class="question-number"></span></h5>
+      <button type="button" class="btn btn-danger btn-sm remove-question-btn">
+        <i class="bi bi-trash"></i>
+      </button>
+    </div>
+    <div class="question-body">
+      <div class="mb-3">
+        <label class="form-label">Question Text <span class="text-danger">*</span></label>
+        <textarea class="form-control question-text" rows="2" required></textarea>
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Question Type</label>
+        <select class="form-select question-type">
+          <option value="mcq">Multiple Choice</option>
+          <option value="true_false">True/False</option>
+          <option value="short_answer">Short Answer</option>
+        </select>
+      </div>
+      
+      <div class="options-section">
+        <label class="form-label">Options</label>
+        <div class="options-container mb-2">
+          <input type="text" class="form-control mb-2 option-input" placeholder="Option A">
+          <input type="text" class="form-control mb-2 option-input" placeholder="Option B">
+          <input type="text" class="form-control mb-2 option-input" placeholder="Option C">
+          <input type="text" class="form-control mb-2 option-input" placeholder="Option D">
+        </div>
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Correct Answer</label>
+        <input type="text" class="form-control correct-answer" placeholder="Enter correct answer">
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Points</label>
+        <input type="number" class="form-control question-points" value="10" min="1">
+      </div>
+    </div>
+  </div>
+</template>
+
+<style>
+.question-card {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  background: #fff;
+}
+
+.question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items-center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #f8f9fa;
+}
+
+.test-case-item {
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 2px solid #f8f9fa;
+}
+</style>
+
+<script>
+let questionCount = 0;
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Assignment type change handler
+  document.getElementById('assignment_type').addEventListener('change', handleTypeChange);
+  
+  // Add Question Button
+  document.getElementById('addQuestionBtn').addEventListener('click', addQuestion);
+  
+  // Add Test Case Button
+  document.getElementById('addTestCaseBtn').addEventListener('click', addTestCase);
+  
+  // Generate AI Button
+  document.getElementById('generateAIBtn').addEventListener('click', generateWithAI);
+  
+  // Form Submit
+  document.getElementById('createAssignmentForm').addEventListener('submit', handleSubmit);
+  
+  // Initialize based on default type
+  handleTypeChange();
+});
+
+function handleTypeChange() {
+  const type = document.getElementById('assignment_type').value;
+  const writtenSection = document.getElementById('writtenSection');
+  const codingSection = document.getElementById('codingSection');
+  
+  if (type === 'written') {
+    writtenSection.style.display = 'block';
+    codingSection.style.display = 'none';
+  } else if (type === 'coding') {
+    writtenSection.style.display = 'none';
+    codingSection.style.display = 'block';
+  } else { // mixed
+    writtenSection.style.display = 'block';
+    codingSection.style.display = 'block';
+  }
+}
+
+function addQuestion() {
+  questionCount++;
+  const template = document.getElementById('questionTemplate');
+  const clone = template.content.cloneNode(true);
+  
+  clone.querySelector('.question-number').textContent = questionCount;
+  clone.querySelector('.question-card').setAttribute('data-question-index', questionCount);
+  
+  // Question type change handler
+  clone.querySelector('.question-type').addEventListener('change', function() {
+    const optionsSection = this.closest('.question-body').querySelector('.options-section');
+    if (this.value === 'short_answer') {
+      optionsSection.style.display = 'none';
+    } else {
+      optionsSection.style.display = 'block';
+    }
+  });
+  
+  // Remove button handler
+  clone.querySelector('.remove-question-btn').addEventListener('click', function() {
+    this.closest('.question-card').remove();
+    updateQuestionNumbers();
+  });
+  
+  document.getElementById('questionsContainer').appendChild(clone);
+}
+
+function addTestCase() {
+  const container = document.getElementById('testCasesContainer');
+  const div = document.createElement('div');
+  div.className = 'test-case-item mb-3';
+  div.innerHTML = `
+    <div class="row">
+      <div class="col-md-5">
+        <input type="text" class="form-control test-input" placeholder="Input">
+      </div>
+      <div class="col-md-5">
+        <input type="text" class="form-control test-output" placeholder="Expected Output">
+      </div>
+      <div class="col-md-2">
+        <button type="button" class="btn btn-danger btn-sm remove-test-btn">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    </div>
+  `;
+  
+  div.querySelector('.remove-test-btn').addEventListener('click', function() {
+    div.remove();
+  });
+  
+  container.appendChild(div);
+}
+
+function updateQuestionNumbers() {
+  const questions = document.querySelectorAll('.question-card');
+  questions.forEach((question, index) => {
+    question.querySelector('.question-number').textContent = index + 1;
+    question.setAttribute('data-question-index', index + 1);
+  });
+  questionCount = questions.length;
+}
+
+function generateWithAI() {
+  const courseId = '{{ course_id }}';
+  const type = document.getElementById('assignment_type').value;
+  const numQuestions = prompt('How many questions would you like to generate?', '5');
+  
+  if (!numQuestions) return;
+  
+  const btn = document.getElementById('generateAIBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generating...';
+  
+  fetch(`/api/courses/instructor/course/${courseId}/assignment/generate/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+    },
+    body: JSON.stringify({
+      assignment_type: type,
+      num_questions: parseInt(numQuestions)
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.generated_content) {
+      alert('Content generated successfully! Please review and edit as needed.');
+      // Populate form with generated content
+      // Implementation depends on API response structure
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Failed to generate content. Please try again.');
+  })
+  .finally(() => {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-stars"></i> Generate with AI';
+  });
+}
+
+function handleSubmit(e) {
+  e.preventDefault();
+  
+  const type = document.getElementById('assignment_type').value;
+  const formData = {
+    course_id: '{{ course_id }}',
+    title: document.getElementById('title').value,
+    description: document.getElementById('description').value,
+    assignment_type: type,
+    time_limit_minutes: parseInt(document.getElementById('time_limit_minutes').value),
+    passing_score: parseInt(document.getElementById('passing_score').value),
+    max_attempts: parseInt(document.getElementById('max_attempts').value),
+    allow_copy_paste: document.getElementById('allow_copy_paste').checked,
+    allow_window_switch: document.getElementById('allow_window_switch').checked,
+    max_warnings: parseInt(document.getElementById('max_warnings').value),
+    is_published: e.submitter.value === 'publish',
+    questions: [],
+    coding_problem: {}
+  };
+  
+  // Collect written questions
+  if (type === 'written' || type === 'mixed') {
+    const questionCards = document.querySelectorAll('.question-card');
+    questionCards.forEach(card => {
+      const questionType = card.querySelector('.question-type').value;
+      const options = questionType !== 'short_answer' ? 
+        Array.from(card.querySelectorAll('.option-input')).map(input => input.value) : [];
+      
+      formData.questions.push({
+        question_text: card.querySelector('.question-text').value,
+        question_type: questionType,
+        options: options,
+        correct_answer: card.querySelector('.correct-answer').value,
+        points: parseInt(card.querySelector('.question-points').value)
+      });
+    });
+  }
+  
+  // Collect coding problem
+  if (type === 'coding' || type === 'mixed') {
+    const testCases = Array.from(document.querySelectorAll('.test-case-item')).map(item => ({
+      input: item.querySelector('.test-input').value,
+      expected_output: item.querySelector('.test-output').value
+    }));
+    
+    formData.coding_problem = {
+      description: document.getElementById('coding_description').value,
+      starter_code: document.getElementById('starter_code').value,
+      test_cases: testCases
+    };
+  }
+  
+  // Submit to API
+  const submitBtn = e.submitter;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creating...';
+  
+  fetch(`/api/courses/instructor/course/{{ course_id }}/assignment/create/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+    },
+    body: JSON.stringify(formData)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.id) {
+      alert('Assignment created successfully!');
+      window.location.href = '{% url "instructor_courses" %}';
+    } else {
+      alert('Error: ' + (data.error || 'Failed to create assignment'));
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Failed to create assignment. Please try again.');
+  })
+  .finally(() => {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = e.submitter.value === 'publish' ? 
+      '<i class="bi bi-check-circle"></i> Create & Publish' : 
+      '<i class="bi bi-save"></i> Save as Draft';
+  });
+}
+</script>
+{% endblock %}
