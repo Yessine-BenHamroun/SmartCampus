@@ -22,11 +22,15 @@ class Course:
         self.short_description = kwargs.get('short_description', '')
         self.instructor_id = kwargs.get('instructor_id')  # Reference to User
         self.category = kwargs.get('category')
-        self.difficulty_level = kwargs.get('difficulty_level', 'Beginner')
+        # Support both 'level' (from DB) and 'difficulty_level' (legacy)
+        self.difficulty_level = kwargs.get('level') or kwargs.get('difficulty_level', 'Beginner')
+        self.level = self.difficulty_level  # Alias for consistency
         self.price = kwargs.get('price', 0.0)
         self.discount_price = kwargs.get('discount_price')
         self.duration_hours = kwargs.get('duration_hours', 0)
-        self.thumbnail_image = kwargs.get('thumbnail_image', '')
+        # Support both 'thumbnail' (from DB) and 'thumbnail_image' (legacy)
+        self.thumbnail = kwargs.get('thumbnail', '')
+        self.thumbnail_image = self.thumbnail  # Alias for backward compatibility
         self.preview_video = kwargs.get('preview_video', '')
         self.syllabus = kwargs.get('syllabus', [])  # List of modules/lessons
         self.requirements = kwargs.get('requirements', [])
@@ -35,7 +39,9 @@ class Course:
         self.enrolled_count = kwargs.get('enrolled_count', 0)
         self.rating = kwargs.get('rating', 0.0)
         self.reviews_count = kwargs.get('reviews_count', 0)
-        self.is_published = kwargs.get('is_published', False)
+        # Support both 'published' (from DB) and 'is_published' (legacy)
+        self.published = kwargs.get('published', False)
+        self.is_published = self.published  # Alias for consistency
         self.is_featured = kwargs.get('is_featured', False)
         self.created_at = kwargs.get('created_at', datetime.utcnow())
         self.updated_at = kwargs.get('updated_at', datetime.utcnow())
@@ -79,8 +85,8 @@ class Course:
     def find_by_instructor(cls, instructor_id):
         """Find courses by instructor"""
         collection = cls.get_collection()
-        if isinstance(instructor_id, str):
-            instructor_id = ObjectId(instructor_id)
+        # Keep instructor_id as string since it's stored as string in the database
+        instructor_id = str(instructor_id)
         courses_data = collection.find({'instructor_id': instructor_id})
         return [cls(**course) for course in courses_data]
     
@@ -114,10 +120,12 @@ class Course:
             'instructor_id': str(self.instructor_id) if self.instructor_id else None,
             'category': self.category,
             'difficulty_level': self.difficulty_level,
+            'level': self.level,  # Include both field names
             'price': float(self.price),
             'discount_price': float(self.discount_price) if self.discount_price else None,
             'duration_hours': self.duration_hours,
-            'thumbnail_image': self.thumbnail_image,
+            'thumbnail': self.thumbnail,  # Primary field name
+            'thumbnail_image': self.thumbnail_image,  # Alias for compatibility
             'preview_video': self.preview_video,
             'syllabus': self.syllabus,
             'requirements': self.requirements,
@@ -126,7 +134,8 @@ class Course:
             'enrolled_count': self.enrolled_count,
             'rating': float(self.rating),
             'reviews_count': self.reviews_count,
-            'is_published': self.is_published,
+            'published': self.published,  # Primary field name
+            'is_published': self.is_published,  # Alias for compatibility
             'is_featured': self.is_featured,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,

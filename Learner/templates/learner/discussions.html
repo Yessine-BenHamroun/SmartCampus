@@ -1,0 +1,174 @@
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}Discussions - SmartCampus{% endblock %}
+
+{% block body_class %}discussions-page{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<section class="page-header section light-background">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-8" data-aos="fade-up">
+        <h1>Course Discussions</h1>
+        <p>Ask questions, share insights, and connect with fellow learners</p>
+      </div>
+      <div class="col-lg-4 text-end" data-aos="fade-up" data-aos-delay="100">
+        <button class="btn btn-primary" disabled>
+          <i class="bi bi-plus-circle"></i> New Discussion
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Discussions Section -->
+<section class="discussions-section section">
+  <div class="container">
+    
+    <!-- Discussion Stats -->
+    <div class="row mb-5" data-aos="fade-up">
+      <div class="col-md-3">
+        <div class="stat-card">
+          <i class="bi bi-chat-dots"></i>
+          <div>
+            <h4>0</h4>
+            <p>Active Discussions</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <i class="bi bi-reply"></i>
+          <div>
+            <h4>0</h4>
+            <p>Your Comments</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <i class="bi bi-hand-thumbs-up"></i>
+          <div>
+            <h4>0</h4>
+            <p>Helpful Votes</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <i class="bi bi-patch-check"></i>
+          <div>
+            <h4>0</h4>
+            <p>Best Answers</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Discussion Filters -->
+    <div class="row mb-4" data-aos="fade-up" data-aos-delay="100">
+      <div class="col-12">
+        <div class="filters-bar">
+          <div class="filter-group">
+            <label>Filter by:</label>
+            <select class="form-select" disabled>
+              <option>All Courses</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Sort by:</label>
+            <select class="form-select" disabled>
+              <option>Recent Activity</option>
+              <option>Most Votes</option>
+              <option>Unanswered</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Discussions List -->
+    <div class="row" data-aos="fade-up" data-aos-delay="150">
+      <div class="col-12">
+        <div class="empty-state text-center py-5">
+          <i class="bi bi-chat-square-dots display-1 text-muted mb-3"></i>
+          <h3>No Discussions Available</h3>
+          <p class="text-muted mb-4">Enroll in courses to participate in discussions and connect with other learners.</p>
+          <a href="{% url 'courses' %}" class="btn btn-primary">
+            <i class="bi bi-search"></i> Browse Courses
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<style>
+.stat-card {
+  background: white;
+  border-radius: 10px;
+  padding: 25px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  transition: transform 0.3s;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+}
+
+.stat-card i {
+  font-size: 2.5rem;
+  color: var(--accent-color);
+}
+
+.stat-card h4 {
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 0;
+  color: var(--heading-color);
+}
+
+.stat-card p {
+  margin: 0;
+  color: var(--default-color);
+}
+
+.filters-bar {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-group label {
+  margin: 0;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.filter-group .form-select {
+  min-width: 200px;
+}
+
+.empty-state {
+  background: white;
+  border-radius: 10px;
+  padding: 60px 20px;
+}
+</style>
+{% endblock %}

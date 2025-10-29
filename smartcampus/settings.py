@@ -73,6 +73,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'Learner.context_processors.api_auth_context',  # API auth context
             ],
         },
     },
@@ -166,3 +167,7 @@ EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'SmartCampus <noreply@smartcampus.com>')
+
+# Backend API URL for authentication
+BACKEND_API_URL = os.environ.get('BACKEND_API_URL', 'http://localhost:8001/api')
+

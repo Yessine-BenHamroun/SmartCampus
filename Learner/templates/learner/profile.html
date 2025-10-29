@@ -151,12 +151,9 @@
                   <div class="alert alert-success">
                     <i class="bi bi-shield-check"></i> Two-factor authentication is enabled for your account.
                   </div>
-                  <form method="post" action="{% url 'disable_2fa' %}" style="display: inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to disable 2FA? This will make your account less secure.')">
-                      <i class="bi bi-shield-x"></i> Disable 2FA
-                    </button>
-                  </form>
+                  <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#disable2FAModal">
+                    <i class="bi bi-shield-x"></i> Disable 2FA
+                  </button>
                 {% else %}
                   <div class="alert alert-warning">
                     <i class="bi bi-shield-exclamation"></i> Two-factor authentication is not enabled. Enable it for better security.
@@ -165,6 +162,36 @@
                     <i class="bi bi-shield-lock"></i> Enable 2FA
                   </a>
                 {% endif %}
+              </div>
+            </div>
+
+            <!-- Disable 2FA Modal -->
+            <div class="modal fade" id="disable2FAModal" tabindex="-1" aria-labelledby="disable2FAModalLabel" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="disable2FAModalLabel">Disable Two-Factor Authentication</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <form method="post" action="{% url 'disable_2fa' %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                      <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> 
+                        <strong>Warning!</strong> Disabling 2FA will make your account less secure.
+                      </div>
+                      <div class="mb-3">
+                        <label for="password" class="form-label">Enter your password to confirm:</label>
+                        <input type="password" class="form-control" id="password" name="password" required 
+                               placeholder="Your password" autocomplete="current-password">
+                      </div>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                      <button type="submit" class="btn btn-danger">Disable 2FA</button>
+                    </div>
+                  </form>
+                </div>
               </div>
             </div>
 

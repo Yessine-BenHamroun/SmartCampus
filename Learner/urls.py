@@ -5,6 +5,7 @@ urlpatterns = [
     path('', views.index, name='index'),
     path('about/', views.about, name='about'),
     path('courses/', views.courses, name='courses'),
+    path('courses/<str:course_id>/', views.course_detail, name='course_detail'),
     path('course-details/', views.course_details, name='course_details'),
     path('instructors/', views.instructors, name='instructors'),
     path('instructor-profile/', views.instructor_profile, name='instructor_profile'),
@@ -27,12 +28,25 @@ urlpatterns = [
     
     # Password Reset URLs
     path('forgot-password/', views.forgot_password_view, name='forgot_password'),
-    path('reset-password/<uidb64>/<token>/', views.reset_password_view, name='reset_password'),
+    path('reset-password/', views.reset_password_view, name='reset_password'),
     
     # Two-Factor Authentication URLs
     path('setup-2fa/', views.setup_2fa, name='setup_2fa'),
-    path('qr-code/', views.qr_code, name='qr_code'),
     path('verify-2fa-setup/', views.verify_2fa_setup, name='verify_2fa_setup'),
     path('verify-2fa-login/', views.verify_2fa_login, name='verify_2fa_login'),
     path('disable-2fa/', views.disable_2fa, name='disable_2fa'),
+    
+    # Student Learning URLs
+    path('my-learning/', views.my_learning_view, name='my_learning'),
+    path('my-progress/', views.my_progress_view, name='my_progress'),
+    path('my-submissions/', views.my_submissions_view, name='my_submissions'),
+    path('discussions/', views.discussions_view, name='discussions'),
+    
+    # Instructor URLs
+    path('instructor/dashboard/', views.instructor_dashboard_view, name='instructor_dashboard'),
+    path('instructor/courses/', views.instructor_courses_view, name='instructor_courses'),
+    path('instructor/courses/create/', views.create_course_view, name='create_course'),
+    path('instructor/courses/<str:course_id>/edit/', views.edit_course_view, name='edit_course'),
+    path('instructor/submissions/', views.instructor_submissions_view, name='instructor_submissions'),
+    path('instructor/analytics/', views.course_analytics_view, name='course_analytics'),
 ]

@@ -1,22 +1,24 @@
+"""
+Views using Backend API for authentication (MongoDB)
+This replaces the old SQLite-based authentication
+"""
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, authenticate, logout
-from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.contrib.auth.models import User
-from django.contrib.auth.tokens import default_token_generator
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes, force_str
-from django.core.mail import send_mail
-from django.template.loader import render_to_string
-from django.conf import settings
-from .forms import RegisterForm, LoginForm
-from django_otp.plugins.otp_totp.models import TOTPDevice
-from django_otp import user_has_device
 from django.http import HttpResponse
-import qrcode
-import io
+from .api_auth import (
+    APIAuthBackend,
+    save_user_session,
+    clear_user_session,
+    get_current_user,
+    is_authenticated as api_is_authenticated,
+    get_access_token,
+    api_login_required
+)
+from .forms import RegisterForm, LoginForm
+import time
 
-# Create your views here.
+
+# Page Views (no auth required)
 
 def index(request):
     """Home page view"""
@@ -28,7 +30,81 @@ def about(request):
 
 def courses(request):
     """Courses listing page view"""
-    return render(request, 'learner/courses.html')
+    import requests
+    
+    courses_list = []
+    try:
+        # Fetch published courses from backend API
+        response = requests.get('http://localhost:8001/api/courses/')
+        
+        if response.status_code == 200:
+            data = response.json()
+            courses_list = data.get('courses', [])
+    except Exception as e:
+        print(f"Error fetching courses: {str(e)}")
+    
+    context = {
+        'courses': courses_list,
+        'total_count': len(courses_list)
+    }
+    
+    return render(request, 'learner/courses.html', context)
+
+def course_detail(request, course_id):
+    """Course detail page view - shows course overview without content access"""
+    import requests
+    
+    course = None
+    modules = []
+    is_enrolled = False
+    
+    try:
+        # Fetch course details from backend API
+        response = requests.get(f'http://localhost:8001/api/courses/{course_id}/')
+        
+        if response.status_code == 200:
+            data = response.json()
+            course = data.get('course')
+            
+            # Fetch course modules (curriculum overview only)
+            modules_response = requests.get(f'http://localhost:8001/api/courses/{course_id}/modules/')
+            if modules_response.status_code == 200:
+                modules_data = modules_response.json()
+                modules = modules_data.get('modules', [])
+                
+                # Fetch lessons for each module
+                for module in modules:
+                    module_id = module.get('id')
+                    lessons_response = requests.get(f'http://localhost:8001/api/courses/module/{module_id}/lessons/')
+                    if lessons_response.status_code == 200:
+                        lessons_data = lessons_response.json()
+                        module['lessons'] = lessons_data.get('lessons', [])
+                    else:
+                        module['lessons'] = []
+            
+            # Check if user is enrolled (if logged in)
+            if api_is_authenticated(request):
+                access_token = get_access_token(request)
+                enrollment_response = requests.get(
+                    f'http://localhost:8001/api/courses/{course_id}/enrollment/check/',
+                    headers={'Authorization': f'Bearer {access_token}'}
+                )
+                if enrollment_response.status_code == 200:
+                    enrollment_data = enrollment_response.json()
+                    is_enrolled = enrollment_data.get('is_enrolled', False)
+                    
+    except Exception as e:
+        print(f"Error fetching course details: {str(e)}")
+        import traceback
+        traceback.print_exc()
+    
+    context = {
+        'course': course,
+        'modules': modules,
+        'is_enrolled': is_enrolled
+    }
+    
+    return render(request, 'learner/course_detail.html', context)
 
 def course_details(request):
     """Course details page view"""
@@ -83,20 +159,33 @@ def error_404(request, exception=None):
     return render(request, 'learner/404.html', status=404)
 
 
-# Authentication Views
+# Authentication Views (using Backend API)
 
 def register_view(request):
-    """User registration view"""
-    if request.user.is_authenticated:
+    """User registration view - calls backend API"""
+    if api_is_authenticated(request):
         return redirect('index')
     
     if request.method == 'POST':
         form = RegisterForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            username = form.cleaned_data.get('username')
-            messages.success(request, f'Account created for {username}! You can now log in.')
-            return redirect('login')
+            backend = APIAuthBackend()
+            
+            # Call backend API to register
+            success, result, tokens = backend.register(
+                username=form.cleaned_data['username'],
+                email=form.cleaned_data['email'],
+                password=form.cleaned_data['password1'],
+                first_name=form.cleaned_data.get('first_name', ''),
+                last_name=form.cleaned_data.get('last_name', '')
+            )
+            
+            if success:
+                username = form.cleaned_data.get('username')
+                messages.success(request, f'Account created for {username}! You can now log in.')
+                return redirect('login')
+            else:
+                messages.error(request, result)
         else:
             messages.error(request, 'Please correct the errors below.')
     else:
@@ -106,69 +195,38 @@ def register_view(request):
 
 
 def login_view(request):
-    """User login view"""
-    if request.user.is_authenticated:
+    """User login view - calls backend API"""
+    if api_is_authenticated(request):
         return redirect('index')
     
     if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+        form = LoginForm(request.POST)
         
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            # Check if user has 2FA enabled
-            if user_has_device(user):
-                # Generate a random 6-digit code
-                import random
-                verification_code = str(random.randint(100000, 999999))
+        if form.is_valid():
+            email = form.cleaned_data['email']
+            password = form.cleaned_data['password']
+            
+            backend = APIAuthBackend()
+            
+            # Backend API only accepts email for login
+            success, result, tokens = backend.login(
+                email=email,
+                password=password
+            )
+            
+            if success:
+                # Save user data and tokens in session
+                save_user_session(request, result, tokens)
                 
-                # Store code in session with expiry
-                import time
-                request.session['2fa_code'] = verification_code
-                request.session['2fa_user_id'] = user.id
-                request.session['2fa_expires'] = time.time() + 300  # 5 minutes
-                
-                # Send code via email
-                try:
-                    send_mail(
-                        'SmartCampus - Your 2FA Verification Code',
-                        f'Hello {user.first_name or user.username},\n\n'
-                        f'Your verification code is: {verification_code}\n\n'
-                        f'This code will expire in 5 minutes.\n\n'
-                        f'If you did not request this code, please ignore this email.\n\n'
-                        f'Best regards,\n'
-                        f'SmartCampus Team',
-                        settings.EMAIL_HOST_USER,
-                        [user.email],
-                        fail_silently=False,
-                    )
-                    
-                    print(f"\n{'='*80}")
-                    print(f"📧 2FA CODE SENT VIA EMAIL")
-                    print(f"{'='*80}")
-                    print(f"User: {user.username}")
-                    print(f"Email: {user.email}")
-                    print(f"🔐 VERIFICATION CODE: {verification_code}")
-                    print(f"   (Valid for 5 minutes)")
-                    print(f"{'='*80}\n")
-                    
-                    messages.success(request, f'A verification code has been sent to {user.email}')
-                except Exception as e:
-                    print(f"Error sending email: {e}")
-                    messages.error(request, 'Error sending verification code. Please try again.')
-                    return render(request, 'learner/login.html', {'form': LoginForm()})
-                
-                # Redirect to 2FA verification without logging in yet
-                return redirect('verify_2fa_login')
-            else:
-                # No 2FA, login normally
-                login(request, user)
+                username = result.get('username', 'User')
                 messages.success(request, f'Welcome back, {username}!')
+                
                 next_url = request.GET.get('next', 'index')
                 return redirect(next_url)
+            else:
+                messages.error(request, result)
         else:
-            messages.error(request, 'Invalid username or password. Please try again.')
-            form = LoginForm()
+            messages.error(request, 'Please correct the errors below.')
     else:
         form = LoginForm()
     
@@ -176,376 +234,593 @@ def login_view(request):
 
 
 def logout_view(request):
-    """User logout view"""
-    logout(request)
+    """User logout view - calls backend API"""
+    if api_is_authenticated(request):
+        backend = APIAuthBackend()
+        refresh_token = request.session.get('refresh_token')
+        
+        if refresh_token:
+            backend.logout(refresh_token)
+    
+    clear_user_session(request)
     messages.success(request, 'You have been logged out successfully.')
     return redirect('index')
 
 
-@login_required
+@api_login_required
 def profile_view(request):
     """User profile view"""
-    # Check if user has 2FA enabled
-    has_2fa = user_has_device(request.user)
+    user = get_current_user(request)
+    
+    # Check 2FA status from backend
+    backend = APIAuthBackend()
+    access_token = get_access_token(request)
+    success, has_2fa = backend.check_2fa_status(access_token)
+    
+    if not success:
+        has_2fa = False  # Default to False if check fails
+    
     return render(request, 'learner/profile.html', {
-        'user': request.user,
         'has_2fa': has_2fa
     })
 
 
-@login_required
+@api_login_required
 def edit_profile_view(request):
-    """Edit user profile view"""
+    """Edit user profile view - calls backend API"""
     if request.method == 'POST':
-        user = request.user
-        user.first_name = request.POST.get('first_name', '')
-        user.last_name = request.POST.get('last_name', '')
-        user.email = request.POST.get('email', '')
+        backend = APIAuthBackend()
+        access_token = get_access_token(request)
         
-        # Update password if provided
-        new_password = request.POST.get('new_password', '')
-        if new_password:
-            user.set_password(new_password)
-            messages.success(request, 'Password updated successfully. Please login again.')
+        # Prepare update data
+        update_data = {}
+        if request.POST.get('first_name'):
+            update_data['first_name'] = request.POST.get('first_name')
+        if request.POST.get('last_name'):
+            update_data['last_name'] = request.POST.get('last_name')
+        if request.POST.get('phone'):
+            update_data['phone'] = request.POST.get('phone')
+        if request.POST.get('bio'):
+            update_data['bio'] = request.POST.get('bio')
         
-        user.save()
-        messages.success(request, 'Profile updated successfully!')
+        # Check if password change is requested
+        new_password = request.POST.get('new_password', '').strip()
+        old_password = request.POST.get('old_password', '').strip()
+        
+        if new_password and old_password:
+            # Change password first
+            success, msg = backend.change_password(access_token, old_password, new_password)
+            if success:
+                messages.success(request, 'Password updated successfully. Please login again.')
+                clear_user_session(request)
+                return redirect('login')
+            else:
+                messages.error(request, msg)
+                return redirect('edit_profile')
+        
+        # Update profile
+        if update_data:
+            success, result = backend.update_profile(access_token, **update_data)
+            if success:
+                # Update session data
+                request.session['user'] = result
+                request.session.modified = True
+                messages.success(request, 'Profile updated successfully!')
+            else:
+                messages.error(request, result)
+        
         return redirect('profile')
     
-    return render(request, 'learner/edit_profile.html', {'user': request.user})
+    user = get_current_user(request)
+    return render(request, 'learner/edit_profile.html')
 
 
 # Password Reset Views
 
 def forgot_password_view(request):
-    """Forgot password - request reset email"""
+    """Forgot password - request reset email via backend API"""
     if request.method == 'POST':
         email = request.POST.get('email')
-        try:
-            user = User.objects.get(email=email)
-            
-            # Generate token and uid
-            token = default_token_generator.make_token(user)
-            uid = urlsafe_base64_encode(force_bytes(user.pk))
-            
-            # Build reset URL
-            reset_url = request.build_absolute_uri(
-                f'/reset-password/{uid}/{token}/'
-            )
-            
-            # Send email
-            subject = 'Reset Your SmartCampus Password'
-            message = render_to_string('learner/password_reset_email.html', {
-                'user': user,
-                'reset_url': reset_url,
-            })
-            
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [email],
-                html_message=message,
-            )
-            
-            messages.success(request, 'Password reset link has been sent to your email.')
+        backend = APIAuthBackend()
+        
+        success, message = backend.forgot_password(email)
+        
+        if success:
+            messages.success(request, message)
             return redirect('login')
-            
-        except User.DoesNotExist:
-            messages.error(request, 'No account found with that email address.')
+        else:
+            messages.error(request, message)
     
     return render(request, 'learner/forgot_password.html')
 
 
-def reset_password_view(request, uidb64, token):
-    """Reset password with token"""
-    try:
-        uid = force_str(urlsafe_base64_decode(uidb64))
-        user = User.objects.get(pk=uid)
-    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-        user = None
+def reset_password_view(request):
+    """Reset password with token via backend API"""
+    token = request.GET.get('token')
     
-    if user is not None and default_token_generator.check_token(user, token):
-        if request.method == 'POST':
-            new_password = request.POST.get('new_password')
-            confirm_password = request.POST.get('confirm_password')
-            
-            if new_password == confirm_password:
-                user.set_password(new_password)
-                user.save()
-                messages.success(request, 'Password reset successful! You can now login with your new password.')
-                return redirect('login')
-            else:
-                messages.error(request, 'Passwords do not match.')
+    if not token:
+        messages.error(request, 'Invalid reset link.')
+        return redirect('login')
+    
+    if request.method == 'POST':
+        new_password = request.POST.get('new_password')
+        confirm_password = request.POST.get('confirm_password')
         
-        return render(request, 'learner/reset_password.html', {
-            'validlink': True,
-            'uidb64': uidb64,
-            'token': token
+        if new_password != confirm_password:
+            messages.error(request, 'Passwords do not match.')
+            return render(request, 'learner/reset_password.html', {
+                'validlink': True,
+                'token': token
+            })
+        
+        backend = APIAuthBackend()
+        success, message = backend.reset_password(token, new_password)
+        
+        if success:
+            messages.success(request, 'Password reset successful! You can now login with your new password.')
+            return redirect('login')
+        else:
+            messages.error(request, message)
+            return render(request, 'learner/reset_password.html', {
+                'validlink': False
+            })
+    
+    return render(request, 'learner/reset_password.html', {
+        'validlink': True,
+        'token': token
+    })
+
+
+# 2FA Views - Full Implementation
+
+@api_login_required
+def setup_2fa(request):
+    """Setup 2FA - Generate QR code"""
+    backend = APIAuthBackend()
+    access_token = get_access_token(request)
+    
+    # Get QR code and secret from backend
+    success, result = backend.setup_2fa(access_token)
+    
+    if success:
+        # Store secret temporarily in session for verification
+        request.session['temp_2fa_secret'] = result.get('secret')
+        request.session.modified = True
+        
+        return render(request, 'learner/setup_2fa.html', {
+            'qr_code': result.get('qr_code'),
+            'secret': result.get('manual_entry_key')
         })
     else:
-        return render(request, 'learner/reset_password.html', {'validlink': False})
-
-
-# Two-Factor Authentication (2FA) Views
-
-@login_required
-def setup_2fa(request):
-    """Setup 2FA for the user via email"""
-    user = request.user
-    
-    # Check if user already has a confirmed device
-    if TOTPDevice.objects.filter(user=user, confirmed=True).exists():
-        messages.info(request, 'Two-factor authentication is already enabled for your account.')
+        messages.error(request, result)
         return redirect('profile')
-    
-    # Delete any old unconfirmed devices
-    TOTPDevice.objects.filter(user=user, confirmed=False).delete()
-    
-    # Generate a random 6-digit verification code
-    import random
-    import time
-    
-    verification_code = str(random.randint(100000, 999999))
-    
-    # Store verification code in session
-    request.session['2fa_setup_code'] = verification_code
-    request.session['2fa_setup_expires'] = time.time() + 300  # 5 minutes
-    request.session['2fa_setup_user_id'] = user.id
-    
-    # Send code via email
-    try:
-        send_mail(
-            'SmartCampus - Enable Two-Factor Authentication',
-            f'Hello {user.first_name or user.username},\n\n'
-            f'You are enabling Two-Factor Authentication for your SmartCampus account.\n\n'
-            f'Your verification code is: {verification_code}\n\n'
-            f'This code will expire in 5 minutes.\n\n'
-            f'If you did not request this, please ignore this email and ensure your account is secure.\n\n'
-            f'Best regards,\n'
-            f'SmartCampus Team',
-            settings.EMAIL_HOST_USER,
-            [user.email],
-            fail_silently=False,
-        )
-        
-        print(f"\n{'='*80}")
-        print(f"� 2FA SETUP CODE SENT VIA EMAIL")
-        print(f"{'='*80}")
-        print(f"User: {user.username}")
-        print(f"Email: {user.email}")
-        print(f"🔐 SETUP VERIFICATION CODE: {verification_code}")
-        print(f"   (Valid for 5 minutes)")
-        print(f"{'='*80}\n")
-        
-        messages.success(request, f'A verification code has been sent to {user.email}')
-    except Exception as e:
-        print(f"Error sending email: {e}")
-        messages.error(request, 'Error sending verification code. Please try again.')
-        return redirect('profile')
-    
-    context = {
-        'user_email': user.email
-    }
-    
-    return render(request, 'learner/setup_2fa.html', context)
 
 
-@login_required
-def qr_code(request):
-    """Generate QR code image for 2FA setup"""
-    user = request.user
-    
-    # Get the unconfirmed device
-    device = TOTPDevice.objects.filter(user=user, confirmed=False).first()
-    if not device:
-        return HttpResponse("No device found", status=404)
-    
-    # Generate QR code
-    qr = qrcode.QRCode(version=1, box_size=10, border=5)
-    qr.add_data(device.config_url)
-    qr.make(fit=True)
-    
-    img = qr.make_image(fill_color="black", back_color="white")
-    
-    # Save to bytes
-    buf = io.BytesIO()
-    img.save(buf, format='PNG')
-    buf.seek(0)
-    
-    return HttpResponse(buf.getvalue(), content_type="image/png")
-
-
-@login_required
+@api_login_required
 def verify_2fa_setup(request):
-    """Verify the setup code sent via email and enable 2FA"""
-    if request.method != 'POST':
-        return redirect('setup_2fa')
-    
-    import time
-    
-    user = request.user
-    code = request.POST.get('token', '').strip()  # Keep 'token' field name for consistency
-    
-    # Get code from session
-    stored_code = request.session.get('2fa_setup_code')
-    code_expires = request.session.get('2fa_setup_expires')
-    setup_user_id = request.session.get('2fa_setup_user_id')
-    
-    # Validate session data
-    if not all([stored_code, code_expires, setup_user_id]):
-        messages.error(request, 'Setup session expired. Please start the setup process again.')
-        return redirect('setup_2fa')
-    
-    # Check if code expired
-    if time.time() > code_expires:
-        messages.error(request, 'Verification code has expired. Please start the setup process again.')
-        # Clean up session
-        request.session.pop('2fa_setup_code', None)
-        request.session.pop('2fa_setup_expires', None)
-        request.session.pop('2fa_setup_user_id', None)
-        return redirect('setup_2fa')
-    
-    # Check if user matches
-    if setup_user_id != user.id:
-        messages.error(request, 'Invalid session. Please start the setup process again.')
-        return redirect('setup_2fa')
-    
-    print(f"\n{'='*80}")
-    print(f"🔐 2FA SETUP VERIFICATION ATTEMPT")
-    print(f"{'='*80}")
-    print(f"User: {user.username}")
-    print(f"Entered code: {code}")
-    print(f"Expected code: {stored_code}")
-    print(f"Code expires at: {code_expires}")
-    print(f"Current time: {time.time()}")
-    
-    # Verify the code
-    if code == stored_code:
-        print(f"✅ CODE MATCH - ENABLING 2FA")
+    """Verify 2FA setup with code"""
+    if request.method == 'POST':
+        code = request.POST.get('code')
+        secret = request.session.get('temp_2fa_secret')
         
-        # Delete any old devices
-        TOTPDevice.objects.filter(user=user).delete()
+        if not secret:
+            messages.error(request, 'Setup session expired. Please start again.')
+            return redirect('setup_2fa')
         
-        # Create a confirmed TOTP device (we'll keep the device model but use email for login)
-        device = TOTPDevice.objects.create(
-            user=user,
-            name='default',
-            confirmed=True
-        )
+        backend = APIAuthBackend()
+        access_token = get_access_token(request)
         
-        # Clean up session
-        request.session.pop('2fa_setup_code', None)
-        request.session.pop('2fa_setup_expires', None)
-        request.session.pop('2fa_setup_user_id', None)
+        success, message = backend.verify_2fa_setup(access_token, secret, code)
         
-        messages.success(request, '✅ Two-factor authentication has been successfully enabled!')
-        print(f"✅ SUCCESS - 2FA enabled for {user.username}")
-        print(f"{'='*80}\n")
-        
-        return redirect('profile')
-    else:
-        print(f"❌ CODE MISMATCH")
-        print(f"{'='*80}\n")
-        messages.error(request, '❌ Invalid verification code. Please try again.')
-        return redirect('setup_2fa')
+        if success:
+            # Clear temporary secret
+            request.session.pop('temp_2fa_secret', None)
+            request.session.modified = True
+            messages.success(request, '✅ Two-factor authentication enabled successfully!')
+            return redirect('profile')
+        else:
+            messages.error(request, message)
+            return redirect('setup_2fa')
+    
+    return redirect('setup_2fa')
 
 
 def verify_2fa_login(request):
-    """Verify 2FA token sent via email"""
-    import time
-    
-    # Check if there's a pending 2FA verification
-    if '2fa_code' not in request.session or '2fa_user_id' not in request.session:
-        messages.error(request, 'No pending verification. Please login again.')
-        return redirect('login')
-    
-    # Check if code has expired
-    if request.session.get('2fa_expires', 0) < time.time():
-        messages.error(request, 'Verification code has expired. Please login again.')
-        # Clean up session
-        for key in ['2fa_code', '2fa_user_id', '2fa_expires']:
-            if key in request.session:
-                del request.session[key]
-        return redirect('login')
-    
-    if request.method == 'POST':
-        token = request.POST.get('token', '').strip()
-        stored_code = request.session.get('2fa_code')
-        user_id = request.session.get('2fa_user_id')
-        
-        print(f"\n{'='*80}")
-        print(f"🔐 2FA EMAIL VERIFICATION")
-        print(f"{'='*80}")
-        print(f"User ID: {user_id}")
-        print(f"Code entered: {token}")
-        print(f"Expected code: {stored_code}")
-        
-        if token == stored_code:
-            # Get user and login
-            try:
-                user = User.objects.get(pk=user_id)
-                login(request, user)
-                
-                # Clean up session
-                for key in ['2fa_code', '2fa_user_id', '2fa_expires']:
-                    if key in request.session:
-                        del request.session[key]
-                
-                request.session['2fa_verified'] = True
-                
-                print(f"✅ 2FA Verification: SUCCESS")
-                print(f"{'='*80}\n")
-                
-                messages.success(request, f'Welcome back, {user.username}! Two-factor authentication successful!')
-                return redirect('index')
-            except User.DoesNotExist:
-                print(f"❌ 2FA Verification: User not found")
-                print(f"{'='*80}\n")
-                messages.error(request, 'User not found. Please login again.')
-                return redirect('login')
-        else:
-            print(f"❌ 2FA Verification: FAILED - Code mismatch")
-            print(f"{'='*80}\n")
-            messages.error(request, 'Invalid verification code. Please try again.')
-    else:
-        # Display info when page loads
-        user_id = request.session.get('2fa_user_id')
-        stored_code = request.session.get('2fa_code')
-        expires_at = request.session.get('2fa_expires', 0)
-        remaining = int(expires_at - time.time())
-        
-        try:
-            user = User.objects.get(pk=user_id)
-            
-            print(f"\n{'='*80}")
-            print(f"� 2FA VERIFICATION PAGE LOADED")
-            print(f"{'='*80}")
-            print(f"User: {user.username}")
-            print(f"Email: {user.email}")
-            print(f"🔐 VERIFICATION CODE: {stored_code}")
-            print(f"   (Expires in {remaining} seconds)")
-            print(f"{'='*80}\n")
-        except User.DoesNotExist:
-            pass
-    
-    return render(request, 'learner/verify_2fa.html')
+    """Verify 2FA during login - placeholder for now"""
+    # TODO: Implement 2FA verification during login flow
+    messages.info(request, '2FA verification during login will be enhanced soon.')
+    return redirect('login')
 
 
-@login_required
+@api_login_required
 def disable_2fa(request):
-    """Disable 2FA for the user"""
+    """Disable 2FA"""
     if request.method == 'POST':
-        user = request.user
+        password = request.POST.get('password')
         
-        # Delete all TOTP devices for the user
-        TOTPDevice.objects.filter(user=user).delete()
+        if not password:
+            messages.error(request, 'Password is required to disable 2FA.')
+            return redirect('profile')
         
-        # Clear 2FA session
-        if '2fa_verified' in request.session:
-            del request.session['2fa_verified']
+        backend = APIAuthBackend()
+        access_token = get_access_token(request)
         
-        messages.success(request, 'Two-factor authentication has been disabled.')
+        success, message = backend.disable_2fa(access_token, password)
+        
+        if success:
+            messages.success(request, '🔓 ' + message)
+        else:
+            messages.error(request, message)
+        
         return redirect('profile')
     
     return redirect('profile')
+
+
+# Student Learning Views
+
+@api_login_required
+def my_learning_view(request):
+    """Student dashboard - My enrolled courses"""
+    import requests
+    
+    user = get_current_user(request)
+    enrolled_courses = []
+    
+    if user:
+        try:
+            # Fetch enrolled courses from backend API
+            access_token = get_access_token(request)
+            response = requests.get(
+                'http://localhost:8001/api/courses/my/enrollments/',
+                headers={'Authorization': f'Bearer {access_token}'}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                enrollments = data.get('enrollments', [])
+                
+                # Fetch course details for each enrollment
+                for enrollment in enrollments:
+                    course_id = enrollment.get('course_id')
+                    course_response = requests.get(f'http://localhost:8001/api/courses/{course_id}/')
+                    if course_response.status_code == 200:
+                        course_data = course_response.json()
+                        course = course_data.get('course')
+                        if course:
+                            course['progress'] = enrollment.get('progress', 0)
+                            course['enrollment_date'] = enrollment.get('enrolled_at')
+                            enrolled_courses.append(course)
+                            
+        except Exception as e:
+            print(f"Error fetching enrollments: {str(e)}")
+    
+    context = {
+        'page_title': 'My Learning Dashboard',
+        'enrolled_courses': enrolled_courses
+    }
+    
+    return render(request, 'learner/my_learning.html', context)
+
+
+@api_login_required
+def my_progress_view(request):
+    """Student progress tracking"""
+    user = get_current_user(request)
+    
+    # TODO: Fetch progress data from backend API
+    context = {
+        'page_title': 'My Progress',
+        'progress_data': []  # Will be populated from API
+    }
+    
+    return render(request, 'learner/my_progress.html', context)
+
+
+@api_login_required
+def my_submissions_view(request):
+    """Student submissions view"""
+    user = get_current_user(request)
+    
+    # TODO: Fetch submissions from backend API
+    context = {
+        'page_title': 'My Submissions',
+        'submissions': []  # Will be populated from API
+    }
+    
+    return render(request, 'learner/my_submissions.html', context)
+
+
+@api_login_required
+def discussions_view(request):
+    """Course discussions/forums"""
+    user = get_current_user(request)
+    
+    # TODO: Fetch discussions from backend API
+    context = {
+        'page_title': 'Discussions',
+        'discussions': []  # Will be populated from API
+    }
+    
+    return render(request, 'learner/discussions.html', context)
+
+
+# Instructor Views
+
+@api_login_required
+def instructor_dashboard_view(request):
+    """Instructor dashboard - requires instructor or admin role"""
+    user = get_current_user(request)
+    
+    # Check if user has instructor or admin role
+    user_role = user.get('role', 'student')
+    if user_role not in ['instructor', 'admin']:
+        messages.error(request, 'Access denied. Instructor privileges required.')
+        return redirect('index')
+    
+    # Fetch instructor's courses and statistics from backend API
+    backend = APIAuthBackend()
+    access_token = get_access_token(request)
+    
+    import requests
+    courses = []
+    stats = {
+        'total_courses': 0,
+        'published_courses': 0,
+        'total_students': 0,
+        'total_reviews': 0,
+        'average_rating': 0.0
+    }
+    
+    try:
+        response = requests.get(
+            'http://localhost:8001/api/courses/instructor/my-courses/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            courses = data.get('courses', [])
+            
+            # Calculate statistics
+            stats['total_courses'] = len(courses)
+            stats['published_courses'] = sum(1 for c in courses if c.get('published') or c.get('is_published'))
+            stats['total_students'] = sum(c.get('enrollment_count', 0) for c in courses)
+            stats['total_reviews'] = sum(c.get('review_count', 0) for c in courses)
+            
+            # Calculate average rating across all courses
+            total_rating = sum(c.get('average_rating', 0) * c.get('review_count', 0) for c in courses)
+            total_review_count = sum(c.get('review_count', 0) for c in courses)
+            if total_review_count > 0:
+                stats['average_rating'] = round(total_rating / total_review_count, 1)
+        else:
+            messages.error(request, 'Failed to load dashboard data')
+    except Exception as e:
+        messages.error(request, f'Error connecting to backend: {str(e)}')
+    
+    context = {
+        'page_title': 'Teaching Dashboard',
+        'stats': stats,
+        'recent_courses': courses[:5]  # Show 5 most recent courses
+    }
+    
+    return render(request, 'learner/instructor_dashboard.html', context)
+
+
+@api_login_required
+def instructor_courses_view(request):
+    """Instructor's courses management"""
+    user = get_current_user(request)
+    
+    # Check if user has instructor or admin role
+    user_role = user.get('role', 'student')
+    if user_role not in ['instructor', 'admin']:
+        messages.error(request, 'Access denied. Instructor privileges required.')
+        return redirect('index')
+    
+    # Fetch instructor's courses from backend API
+    backend = APIAuthBackend()
+    access_token = get_access_token(request)
+    
+    import requests
+    try:
+        response = requests.get(
+            'http://localhost:8001/api/courses/instructor/my-courses/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            courses = data.get('courses', [])
+        else:
+            courses = []
+            messages.error(request, 'Failed to load courses')
+    except Exception as e:
+        courses = []
+        messages.error(request, f'Error connecting to backend: {str(e)}')
+    
+    context = {
+        'page_title': 'My Courses',
+        'courses': courses
+    }
+    
+    return render(request, 'learner/instructor_courses.html', context)
+
+
+@api_login_required
+def instructor_submissions_view(request):
+    """Submissions to grade (instructor view)"""
+    user = get_current_user(request)
+    
+    # Check if user has instructor or admin role
+    user_role = user.get('role', 'student')
+    if user_role not in ['instructor', 'admin']:
+        messages.error(request, 'Access denied. Instructor privileges required.')
+        return redirect('index')
+    
+    # TODO: Fetch submissions from backend API
+    context = {
+        'page_title': 'Student Submissions',
+        'submissions': []  # Will be populated from API
+    }
+    
+    return render(request, 'learner/instructor_submissions.html', context)
+
+
+@api_login_required
+def course_analytics_view(request):
+    """Course analytics for instructors"""
+    user = get_current_user(request)
+    
+    # Check if user has instructor or admin role
+    user_role = user.get('role', 'student')
+    if user_role not in ['instructor', 'admin']:
+        messages.error(request, 'Access denied. Instructor privileges required.')
+        return redirect('index')
+    
+    # TODO: Fetch analytics from backend API
+    context = {
+        'page_title': 'Course Analytics',
+        'analytics': {}  # Will be populated from API
+    }
+    
+    return render(request, 'learner/course_analytics.html', context)
+
+
+@api_login_required
+def create_course_view(request):
+    """Create a new course"""
+    user = get_current_user(request)
+    
+    # Check if user has instructor or admin role
+    user_role = user.get('role', 'student')
+    if user_role not in ['instructor', 'admin']:
+        messages.error(request, 'Access denied. Instructor privileges required.')
+        return redirect('index')
+    
+    if request.method == 'POST':
+        backend = APIAuthBackend()
+        access_token = get_access_token(request)
+        
+        import requests
+        try:
+            # Prepare course data
+            course_data = {
+                'title': request.POST.get('title'),
+                'description': request.POST.get('description'),
+                'category': request.POST.get('category', 'general'),
+                'level': request.POST.get('level', 'beginner'),
+                'price': request.POST.get('price', 0),
+                'thumbnail': request.POST.get('thumbnail', ''),
+                'preview_video': request.POST.get('preview_video', ''),
+            }
+            
+            response = requests.post(
+                'http://localhost:8001/api/courses/instructor/create/',
+                json=course_data,
+                headers={'Authorization': f'Bearer {access_token}'}
+            )
+            
+            if response.status_code == 201:
+                data = response.json()
+                messages.success(request, 'Course created successfully!')
+                course_id = data['course']['id']
+                return redirect('edit_course', course_id=course_id)
+            else:
+                error_data = response.json()
+                messages.error(request, error_data.get('error', 'Failed to create course'))
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+    
+    context = {
+        'page_title': 'Create New Course',
+        'categories': ['general', 'programming', 'design', 'business', 'marketing', 'data-science'],
+        'levels': ['beginner', 'intermediate', 'advanced']
+    }
+    
+    return render(request, 'learner/create_course.html', context)
+
+
+@api_login_required
+def edit_course_view(request, course_id):
+    """Edit an existing course"""
+    user = get_current_user(request)
+    
+    # Check if user has instructor or admin role
+    user_role = user.get('role', 'student')
+    if user_role not in ['instructor', 'admin']:
+        messages.error(request, 'Access denied. Instructor privileges required.')
+        return redirect('index')
+    
+    backend = APIAuthBackend()
+    access_token = get_access_token(request)
+    
+    import requests
+    
+    if request.method == 'POST':
+        try:
+            # Prepare update data
+            update_data = {
+                'title': request.POST.get('title'),
+                'description': request.POST.get('description'),
+                'category': request.POST.get('category'),
+                'level': request.POST.get('level'),
+                'price': request.POST.get('price'),
+                'thumbnail': request.POST.get('thumbnail', ''),
+                'preview_video': request.POST.get('preview_video', ''),
+            }
+            
+            if 'published' in request.POST:
+                update_data['published'] = request.POST.get('published') == 'true'
+            
+            response = requests.put(
+                f'http://localhost:8001/api/courses/instructor/course/{course_id}/',
+                json=update_data,
+                headers={'Authorization': f'Bearer {access_token}'}
+            )
+            
+            if response.status_code == 200:
+                messages.success(request, 'Course updated successfully!')
+            else:
+                error_data = response.json()
+                messages.error(request, error_data.get('error', 'Failed to update course'))
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+    
+    # Fetch course data
+    try:
+        response = requests.get(
+            f'http://localhost:8001/api/courses/instructor/course/{course_id}/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            course = data.get('course', {})
+            
+            # Fetch modules for this course
+            modules_response = requests.get(
+                f'http://localhost:8001/api/courses/instructor/course/{course_id}/modules/',
+                headers={'Authorization': f'Bearer {access_token}'}
+            )
+            
+            if modules_response.status_code == 200:
+                modules_data = modules_response.json()
+                course['modules'] = modules_data.get('modules', [])
+            else:
+                course['modules'] = []
+        else:
+            messages.error(request, 'Course not found')
+            return redirect('instructor_courses')
+    except Exception as e:
+        messages.error(request, f'Error: {str(e)}')
+        return redirect('instructor_courses')
+    
+    context = {
+        'page_title': 'Edit Course',
+        'course': course,
+        'categories': ['general', 'programming', 'design', 'business', 'marketing', 'data-science'],
+        'levels': ['beginner', 'intermediate', 'advanced']
+    }
+    
+    return render(request, 'learner/edit_course.html', context)

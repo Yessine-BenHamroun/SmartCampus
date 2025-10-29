@@ -61,3 +61,12 @@ update_templates.py
 # Frontend duplicate folder (to be removed)
 frontend/
 
+# MongoDB data
+data/
+dump/
+
+# Node modules (if any)
+node_modules/
+
+# Documentation (keep in repo but can be regenerated)
+# 2FA_IMPLEMENTATION_SUMMARY.md can be removed if needed

@@ -1,0 +1,177 @@
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}Student Submissions - SmartCampus{% endblock %}
+
+{% block body_class %}instructor-submissions-page{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<section class="page-header section light-background">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-12" data-aos="fade-up">
+        <h1>Student Submissions</h1>
+        <p>Review and grade student assignments and exercises</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Submissions Section -->
+<section class="submissions-section section">
+  <div class="container">
+    
+    <!-- Submission Stats -->
+    <div class="row mb-5" data-aos="fade-up">
+      <div class="col-md-3">
+        <div class="stat-card">
+          <i class="bi bi-hourglass-split"></i>
+          <div>
+            <h4>0</h4>
+            <p>Pending Review</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <i class="bi bi-check-circle"></i>
+          <div>
+            <h4>0</h4>
+            <p>Graded Today</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <i class="bi bi-file-earmark-text"></i>
+          <div>
+            <h4>0</h4>
+            <p>Total Submissions</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card">
+          <i class="bi bi-graph-up"></i>
+          <div>
+            <h4>0%</h4>
+            <p>Avg. Completion Rate</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4" data-aos="fade-up" data-aos-delay="100">
+      <div class="col-12">
+        <div class="filters-bar">
+          <div class="filter-group">
+            <label>Course:</label>
+            <select class="form-select" disabled>
+              <option>All Courses</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Status:</label>
+            <select class="form-select" disabled>
+              <option>All Status</option>
+              <option>Pending</option>
+              <option>Graded</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Sort by:</label>
+            <select class="form-select" disabled>
+              <option>Newest First</option>
+              <option>Oldest First</option>
+              <option>Due Date</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submissions List -->
+    <div class="row" data-aos="fade-up" data-aos-delay="150">
+      <div class="col-12">
+        <div class="empty-state text-center py-5">
+          <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+          <h3>No Submissions to Review</h3>
+          <p class="text-muted mb-4">Student submissions will appear here when they complete assignments.</p>
+          <a href="{% url 'instructor_courses' %}" class="btn btn-primary">
+            <i class="bi bi-arrow-left"></i> Back to My Courses
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<style>
+.stat-card {
+  background: white;
+  border-radius: 10px;
+  padding: 25px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  transition: transform 0.3s;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+}
+
+.stat-card i {
+  font-size: 3rem;
+  color: var(--accent-color);
+}
+
+.stat-card h4 {
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 0;
+  color: var(--heading-color);
+}
+
+.stat-card p {
+  margin: 0;
+  color: var(--default-color);
+}
+
+.filters-bar {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-group label {
+  margin: 0;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.filter-group .form-select {
+  min-width: 200px;
+}
+
+.empty-state {
+  background: white;
+  border-radius: 10px;
+  padding: 60px 20px;
+}
+</style>
+{% endblock %}

@@ -32,12 +32,13 @@ class CourseListView(APIView):
             skip = int(request.query_params.get('skip', 0))
             limit = int(request.query_params.get('limit', 20))
             
-            # Build filters
-            filters = {'is_published': True}
+            # Build filters - use 'published' which is the actual field name in DB
+            filters = {'published': True}
             if category:
                 filters['category'] = category
             if difficulty:
-                filters['difficulty_level'] = difficulty
+                # Support both 'level' (actual DB field) and 'difficulty_level'
+                filters['level'] = difficulty
             if is_featured:
                 filters['is_featured'] = is_featured.lower() == 'true'
             if search:
@@ -470,5 +471,69 @@ class InstructorCoursesView(APIView):
         except Exception as e:
             return Response({
                 'error': 'Failed to fetch instructor courses',
+                'detail': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CourseModulesView(APIView):
+    """Get modules for a course (public view)"""
+    permission_classes = [AllowAny]
+    
+    def get(self, request, course_id):
+        """Get all modules for a course"""
+        try:
+            from courses.extended_models import Module
+            
+            # Verify course exists
+            course = Course.find_by_id(course_id)
+            if not course:
+                return Response({
+                    'error': 'Course not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # Get modules for this course
+            modules = Module.find_by_course(course_id)
+            modules_data = [module.to_dict() for module in modules]
+            
+            return Response({
+                'modules': modules_data,
+                'count': len(modules_data)
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'error': 'Failed to fetch modules',
+                'detail': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ModuleLessonsView(APIView):
+    """Get lessons for a module (public view - titles only unless enrolled)"""
+    permission_classes = [AllowAny]
+    
+    def get(self, request, module_id):
+        """Get all lessons for a module"""
+        try:
+            from courses.extended_models import Module, Lesson
+            
+            # Verify module exists
+            module = Module.find_by_id(module_id)
+            if not module:
+                return Response({
+                    'error': 'Module not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # Get lessons for this module
+            lessons = Lesson.find_by_module(module_id)
+            lessons_data = [lesson.to_dict() for lesson in lessons]
+            
+            return Response({
+                'lessons': lessons_data,
+                'count': len(lessons_data)
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'error': 'Failed to fetch lessons',
                 'detail': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

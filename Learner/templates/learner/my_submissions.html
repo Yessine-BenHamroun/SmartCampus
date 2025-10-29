@@ -1,0 +1,114 @@
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}My Submissions - SmartCampus{% endblock %}
+
+{% block body_class %}my-submissions-page{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<section class="page-header section light-background">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-12" data-aos="fade-up">
+        <h1>My Submissions</h1>
+        <p>View and track all your assignment submissions and grades</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Submissions Section -->
+<section class="submissions-section section">
+  <div class="container">
+    
+    <!-- Summary Stats -->
+    <div class="row mb-5" data-aos="fade-up">
+      <div class="col-md-4">
+        <div class="summary-card">
+          <i class="bi bi-send-check"></i>
+          <div>
+            <h4>0</h4>
+            <p>Total Submissions</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="summary-card">
+          <i class="bi bi-hourglass-split"></i>
+          <div>
+            <h4>0</h4>
+            <p>Pending Review</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="summary-card">
+          <i class="bi bi-check-circle"></i>
+          <div>
+            <h4>0</h4>
+            <p>Graded</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submissions List -->
+    <div class="row" data-aos="fade-up" data-aos-delay="100">
+      <div class="col-12">
+        <h2 class="mb-4">Recent Submissions</h2>
+        
+        <div class="empty-state text-center py-5">
+          <i class="bi bi-file-earmark-check display-1 text-muted mb-3"></i>
+          <h3>No Submissions Yet</h3>
+          <p class="text-muted mb-4">Complete assignments and exercises to see your submissions here.</p>
+          <a href="{% url 'my_learning' %}" class="btn btn-primary">
+            <i class="bi bi-arrow-left"></i> Go to My Courses
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<style>
+.summary-card {
+  background: white;
+  border-radius: 10px;
+  padding: 25px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  transition: transform 0.3s;
+}
+
+.summary-card:hover {
+  transform: translateY(-5px);
+}
+
+.summary-card i {
+  font-size: 3rem;
+  color: var(--accent-color);
+}
+
+.summary-card h4 {
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 0;
+  color: var(--heading-color);
+}
+
+.summary-card p {
+  margin: 0;
+  color: var(--default-color);
+}
+
+.empty-state {
+  background: white;
+  border-radius: 10px;
+  padding: 60px 20px;
+}
+</style>
+{% endblock %}

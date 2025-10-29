@@ -12,7 +12,9 @@ def get_mongo_client():
     """Get MongoDB client singleton"""
     global _client
     if _client is None:
+        print(f"🔌 Connecting to MongoDB: {settings.MONGODB_SETTINGS['host']}")
         _client = MongoClient(settings.MONGODB_SETTINGS['host'])
+        print(f"✅ MongoDB client connected")
     return _client
 
 
@@ -21,13 +23,16 @@ def get_database():
     global _db
     if _db is None:
         client = get_mongo_client()
-        _db = client[settings.MONGODB_SETTINGS['db_name']]
+        db_name = settings.MONGODB_SETTINGS['db_name']
+        print(f"📂 Using database: {db_name}")
+        _db = client[db_name]
     return _db
 
 
 def get_collection(collection_name):
     """Get MongoDB collection"""
     db = get_database()
+    print(f"📊 Accessing collection: {collection_name}")
     return db[collection_name]
 
 
