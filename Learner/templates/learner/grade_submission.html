@@ -1,0 +1,427 @@
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}Grade Submission - SmartCampus{% endblock %}
+
+{% block extra_head %}
+<!-- CodeMirror CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
+{% endblock %}
+
+{% block content %}
+<section class="page-header section light-background">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1>Grade Submission</h1>
+        <p>{{ submission.assignment_title }}</p>
+      </div>
+      <a href="{% url 'instructor_submissions' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Submissions
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="grading-section section">
+  <div class="container">
+    <div class="row">
+      <!-- Student Code Panel -->
+      <div class="col-lg-8">
+        <div class="code-panel">
+          <div class="panel-header">
+            <h4><i class="bi bi-code-slash"></i> Student Code</h4>
+            <div class="header-actions">
+              <button type="button" class="btn btn-sm btn-outline-primary" onclick="checkCodeSyntax()">
+                <i class="bi bi-check-circle"></i> Check Syntax
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-info" onclick="runCode()">
+                <i class="bi bi-play-circle"></i> Test Run
+              </button>
+            </div>
+          </div>
+          <textarea id="codeViewer"></textarea>
+          
+          <!-- Syntax Analysis -->
+          <div id="syntaxPanel" class="analysis-panel mt-3" style="display: none;">
+            <h5><i class="bi bi-bug"></i> Syntax Analysis</h5>
+            <div id="syntaxResults"></div>
+          </div>
+          
+          <!-- Code Output -->
+          <div id="outputPanel" class="output-panel mt-3" style="display: none;">
+            <h5><i class="bi bi-terminal"></i> Code Output</h5>
+            <pre id="codeOutput"></pre>
+          </div>
+          
+          <!-- Student Comments -->
+          {% if submission.comments %}
+          <div class="comments-panel mt-3">
+            <h5><i class="bi bi-chat-left-text"></i> Student Comments</h5>
+            <p>{{ submission.comments }}</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      
+      <!-- Grading Panel -->
+      <div class="col-lg-4">
+        <div class="grading-card sticky-top">
+          <h4><i class="bi bi-clipboard-check"></i> Grading</h4>
+          
+          <!-- Student Info -->
+          <div class="student-info mb-4">
+            <div class="info-row">
+              <span class="label">Student:</span>
+              <span class="value">{{ submission.student_name }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Submitted:</span>
+              <span class="value">{{ submission.submitted_at|date:"M d, Y H:i" }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Status:</span>
+              <span class="badge bg-{{ submission.status == 'graded' and 'success' or 'warning' }}">
+                {{ submission.status|title }}
+              </span>
+            </div>
+          </div>
+          
+          <!-- Grading Form -->
+          <form id="gradingForm">
+            {% csrf_token %}
+            <input type="hidden" name="submission_id" value="{{ submission.id }}">
+            
+            <div class="mb-3">
+              <label for="score" class="form-label">Score *</label>
+              <div class="input-group">
+                <input type="number" class="form-control" id="score" name="score" 
+                       min="0" max="{{ submission.max_points|default:100 }}" 
+                       value="{{ submission.score|default:0 }}" required>
+                <span class="input-group-text">/ {{ submission.max_points|default:100 }}</span>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label for="feedback" class="form-label">Feedback *</label>
+              <textarea class="form-control" id="feedback" name="feedback" rows="6" 
+                        placeholder="Provide detailed feedback to the student..." required>{{ submission.feedback|default:"" }}</textarea>
+            </div>
+            
+            <!-- Quick Feedback Templates -->
+            <div class="mb-3">
+              <label class="form-label">Quick Feedback:</label>
+              <div class="quick-feedback-btns">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addFeedback('Great work! Code is clean and well-structured.')">
+                  <i class="bi bi-hand-thumbs-up"></i> Excellent
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addFeedback('Good effort. Consider adding more comments.')">
+                  <i class="bi bi-chat"></i> Add Comments
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addFeedback('Code works but needs optimization.')">
+                  <i class="bi bi-speedometer"></i> Optimize
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addFeedback('Please review the syntax errors highlighted above.')">
+                  <i class="bi bi-exclamation-triangle"></i> Syntax Issues
+                </button>
+              </div>
+            </div>
+            
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-check-circle"></i> Submit Grade
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{{ submission_json|json_script:"submission-data" }}
+
+<!-- CodeMirror JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
+
+<style>
+.code-panel {
+  background: white;
+  border-radius: 10px;
+  padding: 30px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.panel-header {
+  background: #2d2d2d;
+  color: white;
+  padding: 15px 20px;
+  border-radius: 8px 8px 0 0;
+  margin: -30px -30px 20px -30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-header h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.CodeMirror {
+  height: 500px;
+  font-size: 14px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+}
+
+.analysis-panel {
+  background: #fff3cd;
+  border: 2px solid #ffc107;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.analysis-panel.success {
+  background: #d1e7dd;
+  border-color: #198754;
+}
+
+.analysis-panel h5 {
+  margin-bottom: 15px;
+}
+
+.output-panel {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.output-panel h5 {
+  color: white;
+  margin-bottom: 15px;
+}
+
+.output-panel pre {
+  background: #2d2d2d;
+  color: #d4d4d4;
+  padding: 15px;
+  border-radius: 6px;
+  margin: 0;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+}
+
+.comments-panel {
+  background: #f8f9fa;
+  border-left: 4px solid var(--accent-color);
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.comments-panel h5 {
+  margin-bottom: 10px;
+}
+
+.grading-card {
+  background: white;
+  border-radius: 10px;
+  padding: 30px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  top: 100px;
+}
+
+.grading-card h4 {
+  color: var(--heading-color);
+  margin-bottom: 20px;
+}
+
+.student-info {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-row .label {
+  font-weight: 600;
+  color: #6c757d;
+}
+
+.info-row .value {
+  color: var(--heading-color);
+}
+
+.quick-feedback-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quick-feedback-btns .btn {
+  text-align: left;
+  justify-content: flex-start;
+}
+
+.form-actions {
+  margin-top: 20px;
+}
+
+.error-line {
+  color: #dc3545;
+  padding: 5px 0;
+}
+
+.success-message {
+  color: #198754;
+  padding: 10px;
+  background: #d1e7dd;
+  border-radius: 6px;
+}
+</style>
+
+<script>
+const submissionData = JSON.parse(document.getElementById('submission-data').textContent);
+let codeViewer;
+
+// Initialize CodeMirror
+document.addEventListener('DOMContentLoaded', function() {
+  codeViewer = CodeMirror.fromTextArea(document.getElementById('codeViewer'), {
+    mode: 'python',
+    theme: 'monokai',
+    lineNumbers: true,
+    readOnly: true,
+    lineWrapping: true
+  });
+  
+  // Load student's code
+  if (submissionData.code) {
+    codeViewer.setValue(submissionData.code);
+  }
+});
+
+async function checkCodeSyntax() {
+  const code = codeViewer.getValue();
+  
+  if (!code.trim()) {
+    alert('No code to check!');
+    return;
+  }
+  
+  try {
+    const response = await fetch('http://localhost:8001/api/courses/validate-code/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer {{ request.session.access_token }}'
+      },
+      body: JSON.stringify({ code: code })
+    });
+    
+    const result = await response.json();
+    displaySyntaxResults(result);
+  } catch (error) {
+    console.error('Error checking syntax:', error);
+    alert('Error checking syntax. Please try again.');
+  }
+}
+
+function displaySyntaxResults(result) {
+  const panel = document.getElementById('syntaxPanel');
+  const resultsDiv = document.getElementById('syntaxResults');
+  
+  panel.style.display = 'block';
+  
+  if (result.valid) {
+    panel.className = 'analysis-panel success mt-3';
+    resultsDiv.innerHTML = `
+      <div class="success-message">
+        <i class="bi bi-check-circle"></i> No syntax errors found!
+        <br><small>Code has ${result.line_count} lines${result.has_comments ? ' with comments' : ''}</small>
+      </div>
+    `;
+  } else {
+    panel.className = 'analysis-panel mt-3';
+    resultsDiv.innerHTML = `
+      <div class="errors-list">
+        <strong>Syntax Errors Found:</strong>
+        ${result.errors.map(err => `<div class="error-line"><i class="bi bi-x-circle"></i> ${err}</div>`).join('')}
+      </div>
+    `;
+  }
+}
+
+function runCode() {
+  alert('Code execution is disabled for security reasons. Use the syntax checker to validate the code.');
+}
+
+function addFeedback(text) {
+  const feedbackArea = document.getElementById('feedback');
+  const currentFeedback = feedbackArea.value.trim();
+  
+  if (currentFeedback) {
+    feedbackArea.value = currentFeedback + '\n\n' + text;
+  } else {
+    feedbackArea.value = text;
+  }
+}
+
+document.getElementById('gradingForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+  const score = document.getElementById('score').value;
+  const feedback = document.getElementById('feedback').value;
+  
+  if (!feedback.trim()) {
+    alert('Please provide feedback for the student!');
+    return;
+  }
+  
+  const formData = {
+    score: parseInt(score),
+    feedback: feedback
+  };
+  
+  try {
+    const response = await fetch(`http://localhost:8001/api/courses/instructor/submission/${submissionData.id}/grade/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer {{ request.session.access_token }}'
+      },
+      body: JSON.stringify(formData)
+    });
+    
+    if (response.ok) {
+      alert('Grade submitted successfully!');
+      window.location.href = '/instructor/submissions/';
+    } else {
+      const data = await response.json();
+      alert('Error submitting grade: ' + (data.error || 'Unknown error'));
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error submitting grade. Please try again.');
+  }
+});
+</script>
+{% endblock %}

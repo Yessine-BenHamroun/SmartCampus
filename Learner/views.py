@@ -824,3 +824,164 @@ def edit_course_view(request, course_id):
     }
     
     return render(request, 'learner/edit_course.html', context)
+
+
+# Quiz Views
+
+@api_login_required
+def create_quiz_view(request, lesson_id):
+    """Create quiz for a lesson (Instructor only)"""
+    import requests
+    
+    # Get lesson and course details
+    access_token = get_access_token(request)
+    lesson = None
+    course_id = None
+    
+    try:
+        lesson_response = requests.get(
+            f'http://localhost:8001/api/courses/lesson/{lesson_id}/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        if lesson_response.status_code == 200:
+            lesson_data = lesson_response.json()
+            lesson = lesson_data.get('lesson')
+            course_id = lesson.get('course_id')
+    except Exception as e:
+        messages.error(request, f'Error fetching lesson: {str(e)}')
+        return redirect('instructor_courses')
+    
+    context = {
+        'lesson_id': lesson_id,
+        'course_id': course_id,
+        'lesson': lesson
+    }
+    
+    return render(request, 'learner/create_quiz.html', context)
+
+
+@api_login_required
+def take_quiz_view(request, quiz_id):
+    """Take a quiz (Student)"""
+    import requests
+    import json
+    
+    access_token = get_access_token(request)
+    quiz = None
+    
+    try:
+        quiz_response = requests.get(
+            f'http://localhost:8001/api/courses/quiz/{quiz_id}/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        if quiz_response.status_code == 200:
+            quiz = quiz_response.json()
+    except Exception as e:
+        messages.error(request, f'Error fetching quiz: {str(e)}')
+        return redirect('my_learning')
+    
+    context = {
+        'quiz': quiz,
+        'quiz_json': json.dumps(quiz)
+    }
+    
+    return render(request, 'learner/take_quiz.html', context)
+
+
+# Assignment Views
+
+@api_login_required
+def create_assignment_view(request, course_id):
+    """Create assignment for a course (Instructor only)"""
+    import requests
+    
+    # Get course details
+    access_token = get_access_token(request)
+    course = None
+    
+    try:
+        course_response = requests.get(
+            f'http://localhost:8001/api/courses/{course_id}/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        if course_response.status_code == 200:
+            course_data = course_response.json()
+            course = course_data.get('course')
+    except Exception as e:
+        messages.error(request, f'Error fetching course: {str(e)}')
+        return redirect('instructor_courses')
+    
+    context = {
+        'course_id': course_id,
+        'course': course
+    }
+    
+    return render(request, 'learner/create_assignment.html', context)
+
+
+@api_login_required
+def take_assignment_view(request, assignment_id):
+    """Take an assignment (Student)"""
+    import requests
+    import json
+    
+    access_token = get_access_token(request)
+    assignment = None
+    
+    try:
+        assignment_response = requests.get(
+            f'http://localhost:8001/api/courses/assignment/{assignment_id}/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        if assignment_response.status_code == 200:
+            assignment = assignment_response.json()
+    except Exception as e:
+        messages.error(request, f'Error fetching assignment: {str(e)}')
+        return redirect('my_learning')
+    
+    context = {
+        'assignment': assignment,
+        'assignment_json': json.dumps(assignment)
+    }
+    
+    return render(request, 'learner/take_assignment.html', context)
+
+
+@api_login_required
+def manage_quizzes_view(request):
+    """Manage all quizzes (Instructor)"""
+    return render(request, 'learner/manage_quizzes.html')
+
+
+@api_login_required
+def manage_assignments_view(request):
+    """Manage all assignments (Instructor)"""
+    return render(request, 'learner/manage_assignments.html')
+
+
+@api_login_required
+def grade_submission_view(request, submission_id):
+    """Grade a student submission (Instructor)"""
+    import requests
+    import json
+    
+    access_token = get_access_token(request)
+    submission = None
+    
+    try:
+        submission_response = requests.get(
+            f'http://localhost:8001/api/courses/submission/{submission_id}/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        if submission_response.status_code == 200:
+            submission = submission_response.json()
+    except Exception as e:
+        messages.error(request, f'Error fetching submission: {str(e)}')
+        return redirect('instructor_submissions')
+    
+    context = {
+        'submission': submission,
+        'submission_json': json.dumps(submission)
+    }
+    
+    return render(request, 'learner/grade_submission.html', context)

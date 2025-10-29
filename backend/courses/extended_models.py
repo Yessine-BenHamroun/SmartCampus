@@ -185,7 +185,7 @@ class Lesson:
 
 
 class Quiz:
-    """Quiz model - Assessment questionnaire"""
+    """Quiz model - Assessment questionnaire for lessons"""
     
     COLLECTION_NAME = 'quizzes'
     
@@ -193,15 +193,17 @@ class Quiz:
         self.id = kwargs.get('_id')
         self.lesson_id = kwargs.get('lesson_id')
         self.course_id = kwargs.get('course_id')
+        self.instructor_id = kwargs.get('instructor_id')
         self.title = kwargs.get('title')
         self.description = kwargs.get('description', '')
-        self.questions = kwargs.get('questions', [])  # List of question objects
+        self.questions = kwargs.get('questions', [])  # List of MCQ question objects
         self.passing_score = kwargs.get('passing_score', 70)  # Percentage
         self.time_limit_minutes = kwargs.get('time_limit_minutes', 0)  # 0 = no limit
         self.max_attempts = kwargs.get('max_attempts', 0)  # 0 = unlimited
         self.shuffle_questions = kwargs.get('shuffle_questions', False)
         self.show_correct_answers = kwargs.get('show_correct_answers', True)
         self.is_published = kwargs.get('is_published', False)
+        self.is_ai_generated = kwargs.get('is_ai_generated', False)
         self.created_at = kwargs.get('created_at', datetime.utcnow())
         self.updated_at = kwargs.get('updated_at', datetime.utcnow())
     
@@ -250,12 +252,22 @@ class Quiz:
         collection = self.get_collection()
         collection.delete_one({'_id': self.id})
     
+    @classmethod
+    def find_by_course(cls, course_id):
+        """Find all quizzes in a course"""
+        collection = cls.get_collection()
+        if isinstance(course_id, str):
+            course_id = ObjectId(course_id)
+        quizzes_data = collection.find({'course_id': course_id})
+        return [cls(**quiz) for quiz in quizzes_data]
+    
     def to_dict(self):
         """Convert to dictionary"""
         return {
             'id': str(self.id),
             'lesson_id': str(self.lesson_id) if self.lesson_id else None,
             'course_id': str(self.course_id) if self.course_id else None,
+            'instructor_id': str(self.instructor_id) if self.instructor_id else None,
             'title': self.title,
             'description': self.description,
             'questions': self.questions,
@@ -265,6 +277,7 @@ class Quiz:
             'shuffle_questions': self.shuffle_questions,
             'show_correct_answers': self.show_correct_answers,
             'is_published': self.is_published,
+            'is_ai_generated': self.is_ai_generated,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -754,4 +767,295 @@ class Progress:
             'bookmarked': self.bookmarked,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class QuizAttempt:
+    """QuizAttempt - Track student attempts at quizzes"""
+    
+    COLLECTION_NAME = 'quiz_attempts'
+    
+    def __init__(self, **kwargs):
+        self.id = kwargs.get('_id')
+        self.quiz_id = kwargs.get('quiz_id')
+        self.student_id = kwargs.get('student_id')
+        self.course_id = kwargs.get('course_id')
+        self.lesson_id = kwargs.get('lesson_id')
+        self.answers = kwargs.get('answers', [])  # List of student answers
+        self.score = kwargs.get('score', 0)
+        self.max_score = kwargs.get('max_score', 100)
+        self.percentage = kwargs.get('percentage', 0)
+        self.passed = kwargs.get('passed', False)
+        self.time_taken_minutes = kwargs.get('time_taken_minutes', 0)
+        self.started_at = kwargs.get('started_at', datetime.utcnow())
+        self.completed_at = kwargs.get('completed_at')
+    
+    @staticmethod
+    def get_collection():
+        return get_collection(QuizAttempt.COLLECTION_NAME)
+    
+    @classmethod
+    def create(cls, **kwargs):
+        """Create quiz attempt"""
+        collection = cls.get_collection()
+        kwargs['started_at'] = datetime.utcnow()
+        result = collection.insert_one(kwargs)
+        kwargs['_id'] = result.inserted_id
+        return cls(**kwargs)
+    
+    @classmethod
+    def find_by_id(cls, attempt_id):
+        """Find attempt by ID"""
+        collection = cls.get_collection()
+        if isinstance(attempt_id, str):
+            attempt_id = ObjectId(attempt_id)
+        attempt_data = collection.find_one({'_id': attempt_id})
+        return cls(**attempt_data) if attempt_data else None
+    
+    @classmethod
+    def find_by_student_quiz(cls, student_id, quiz_id):
+        """Find all attempts by a student for a specific quiz"""
+        collection = cls.get_collection()
+        if isinstance(student_id, str):
+            student_id = ObjectId(student_id)
+        if isinstance(quiz_id, str):
+            quiz_id = ObjectId(quiz_id)
+        attempts_data = collection.find({
+            'student_id': student_id,
+            'quiz_id': quiz_id
+        }).sort('started_at', -1)
+        return [cls(**attempt) for attempt in attempts_data]
+    
+    @classmethod
+    def find_by_quiz(cls, quiz_id):
+        """Find all attempts for a quiz"""
+        collection = cls.get_collection()
+        if isinstance(quiz_id, str):
+            quiz_id = ObjectId(quiz_id)
+        attempts_data = collection.find({'quiz_id': quiz_id}).sort('completed_at', -1)
+        return [cls(**attempt) for attempt in attempts_data]
+    
+    def update(self, **kwargs):
+        """Update quiz attempt"""
+        collection = self.get_collection()
+        collection.update_one({'_id': self.id}, {'$set': kwargs})
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+    
+    def to_dict(self):
+        """Convert to dictionary"""
+        return {
+            'id': str(self.id),
+            'quiz_id': str(self.quiz_id) if self.quiz_id else None,
+            'student_id': str(self.student_id) if self.student_id else None,
+            'course_id': str(self.course_id) if self.course_id else None,
+            'lesson_id': str(self.lesson_id) if self.lesson_id else None,
+            'answers': self.answers,
+            'score': self.score,
+            'max_score': self.max_score,
+            'percentage': self.percentage,
+            'passed': self.passed,
+            'time_taken_minutes': self.time_taken_minutes,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+        }
+
+
+class Assignment:
+    """Assignment - Practical homework for courses"""
+    
+    COLLECTION_NAME = 'assignments'
+    
+    ASSIGNMENT_TYPES = ['coding', 'written', 'mixed']
+    
+    def __init__(self, **kwargs):
+        self.id = kwargs.get('_id')
+        self.course_id = kwargs.get('course_id')
+        self.instructor_id = kwargs.get('instructor_id')
+        self.title = kwargs.get('title')
+        self.description = kwargs.get('description', '')
+        self.assignment_type = kwargs.get('assignment_type', 'written')  # coding, written, mixed
+        self.questions = kwargs.get('questions', [])  # For written assignments
+        self.coding_problem = kwargs.get('coding_problem', {})  # For coding assignments
+        self.time_limit_minutes = kwargs.get('time_limit_minutes', 60)
+        self.max_attempts = kwargs.get('max_attempts', 1)
+        self.passing_score = kwargs.get('passing_score', 50)
+        self.allow_copy_paste = kwargs.get('allow_copy_paste', False)
+        self.allow_window_switch = kwargs.get('allow_window_switch', False)
+        self.max_warnings = kwargs.get('max_warnings', 3)
+        self.is_published = kwargs.get('is_published', False)
+        self.created_at = kwargs.get('created_at', datetime.utcnow())
+        self.updated_at = kwargs.get('updated_at', datetime.utcnow())
+    
+    @staticmethod
+    def get_collection():
+        return get_collection(Assignment.COLLECTION_NAME)
+    
+    @classmethod
+    def create(cls, **kwargs):
+        """Create assignment"""
+        collection = cls.get_collection()
+        kwargs['created_at'] = datetime.utcnow()
+        kwargs['updated_at'] = datetime.utcnow()
+        result = collection.insert_one(kwargs)
+        kwargs['_id'] = result.inserted_id
+        return cls(**kwargs)
+    
+    @classmethod
+    def find_by_id(cls, assignment_id):
+        """Find assignment by ID"""
+        collection = cls.get_collection()
+        if isinstance(assignment_id, str):
+            assignment_id = ObjectId(assignment_id)
+        assignment_data = collection.find_one({'_id': assignment_id})
+        return cls(**assignment_data) if assignment_data else None
+    
+    @classmethod
+    def find_by_course(cls, course_id):
+        """Find assignments by course"""
+        collection = cls.get_collection()
+        if isinstance(course_id, str):
+            course_id = ObjectId(course_id)
+        assignments_data = collection.find({'course_id': course_id}).sort('created_at', -1)
+        return [cls(**assignment) for assignment in assignments_data]
+    
+    def update(self, **kwargs):
+        """Update assignment"""
+        collection = self.get_collection()
+        kwargs['updated_at'] = datetime.utcnow()
+        collection.update_one({'_id': self.id}, {'$set': kwargs})
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+    
+    def delete(self):
+        """Delete assignment"""
+        collection = self.get_collection()
+        collection.delete_one({'_id': self.id})
+    
+    def to_dict(self):
+        """Convert to dictionary"""
+        return {
+            'id': str(self.id),
+            'course_id': str(self.course_id) if self.course_id else None,
+            'instructor_id': str(self.instructor_id) if self.instructor_id else None,
+            'title': self.title,
+            'description': self.description,
+            'assignment_type': self.assignment_type,
+            'questions': self.questions,
+            'coding_problem': self.coding_problem,
+            'time_limit_minutes': self.time_limit_minutes,
+            'max_attempts': self.max_attempts,
+            'passing_score': self.passing_score,
+            'allow_copy_paste': self.allow_copy_paste,
+            'allow_window_switch': self.allow_window_switch,
+            'max_warnings': self.max_warnings,
+            'is_published': self.is_published,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class AssignmentSubmission:
+    """AssignmentSubmission - Track student assignment submissions"""
+    
+    COLLECTION_NAME = 'assignment_submissions'
+    
+    def __init__(self, **kwargs):
+        self.id = kwargs.get('_id')
+        self.assignment_id = kwargs.get('assignment_id')
+        self.student_id = kwargs.get('student_id')
+        self.course_id = kwargs.get('course_id')
+        self.answers = kwargs.get('answers', [])  # Student answers
+        self.code_solution = kwargs.get('code_solution', '')  # For coding assignments
+        self.warnings_count = kwargs.get('warnings_count', 0)
+        self.warning_details = kwargs.get('warning_details', [])
+        self.time_taken_minutes = kwargs.get('time_taken_minutes', 0)
+        self.status = kwargs.get('status', 'submitted')  # submitted, graded, invalidated
+        self.score = kwargs.get('score', 0)
+        self.max_score = kwargs.get('max_score', 100)
+        self.percentage = kwargs.get('percentage', 0)
+        self.passed = kwargs.get('passed', False)
+        self.feedback = kwargs.get('feedback', '')
+        self.graded_by = kwargs.get('graded_by')  # Instructor ID
+        self.ai_assistance_note = kwargs.get('ai_assistance_note', '')  # AI recommendation for grading
+        self.started_at = kwargs.get('started_at', datetime.utcnow())
+        self.submitted_at = kwargs.get('submitted_at')
+        self.graded_at = kwargs.get('graded_at')
+    
+    @staticmethod
+    def get_collection():
+        return get_collection(AssignmentSubmission.COLLECTION_NAME)
+    
+    @classmethod
+    def create(cls, **kwargs):
+        """Create assignment submission"""
+        collection = cls.get_collection()
+        kwargs['started_at'] = datetime.utcnow()
+        kwargs['status'] = 'submitted'
+        result = collection.insert_one(kwargs)
+        kwargs['_id'] = result.inserted_id
+        return cls(**kwargs)
+    
+    @classmethod
+    def find_by_id(cls, submission_id):
+        """Find submission by ID"""
+        collection = cls.get_collection()
+        if isinstance(submission_id, str):
+            submission_id = ObjectId(submission_id)
+        submission_data = collection.find_one({'_id': submission_id})
+        return cls(**submission_data) if submission_data else None
+    
+    @classmethod
+    def find_by_student_assignment(cls, student_id, assignment_id):
+        """Find all submissions by a student for a specific assignment"""
+        collection = cls.get_collection()
+        if isinstance(student_id, str):
+            student_id = ObjectId(student_id)
+        if isinstance(assignment_id, str):
+            assignment_id = ObjectId(assignment_id)
+        submissions_data = collection.find({
+            'student_id': student_id,
+            'assignment_id': assignment_id
+        }).sort('started_at', -1)
+        return [cls(**submission) for submission in submissions_data]
+    
+    @classmethod
+    def find_by_assignment(cls, assignment_id):
+        """Find all submissions for an assignment"""
+        collection = cls.get_collection()
+        if isinstance(assignment_id, str):
+            assignment_id = ObjectId(assignment_id)
+        submissions_data = collection.find({'assignment_id': assignment_id}).sort('submitted_at', -1)
+        return [cls(**submission) for submission in submissions_data]
+    
+    def update(self, **kwargs):
+        """Update assignment submission"""
+        collection = self.get_collection()
+        collection.update_one({'_id': self.id}, {'$set': kwargs})
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+    
+    def to_dict(self):
+        """Convert to dictionary"""
+        return {
+            'id': str(self.id),
+            'assignment_id': str(self.assignment_id) if self.assignment_id else None,
+            'student_id': str(self.student_id) if self.student_id else None,
+            'course_id': str(self.course_id) if self.course_id else None,
+            'answers': self.answers,
+            'code_solution': self.code_solution,
+            'warnings_count': self.warnings_count,
+            'warning_details': self.warning_details,
+            'time_taken_minutes': self.time_taken_minutes,
+            'status': self.status,
+            'score': self.score,
+            'max_score': self.max_score,
+            'percentage': self.percentage,
+            'passed': self.passed,
+            'feedback': self.feedback,
+            'graded_by': str(self.graded_by) if self.graded_by else None,
+            'ai_assistance_note': self.ai_assistance_note,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'submitted_at': self.submitted_at.isoformat() if self.submitted_at else None,
+            'graded_at': self.graded_at.isoformat() if self.graded_at else None,
         }
