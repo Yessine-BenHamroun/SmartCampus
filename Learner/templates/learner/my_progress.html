@@ -1,0 +1,178 @@
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}My Progress - SmartCampus{% endblock %}
+
+{% block body_class %}my-progress-page{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<section class="page-header section light-background">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-12" data-aos="fade-up">
+        <h1>My Learning Progress</h1>
+        <p>Track your achievements and learning analytics</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Progress Section -->
+<section class="progress-section section">
+  <div class="container">
+    
+    <!-- Overall Progress -->
+    <div class="row mb-5" data-aos="fade-up">
+      <div class="col-lg-4">
+        <div class="progress-card">
+          <h4>Overall Progress</h4>
+          <div class="circular-progress">
+            <div class="progress-value">
+              <span class="number">0</span>
+              <span class="percent">%</span>
+            </div>
+          </div>
+          <p class="text-center mt-3">Keep learning to improve your progress!</p>
+        </div>
+      </div>
+      
+      <div class="col-lg-8">
+        <div class="stats-grid">
+          <div class="stat-item">
+            <i class="bi bi-clock"></i>
+            <div>
+              <h5>0 hours</h5>
+              <p>Total Learning Time</p>
+            </div>
+          </div>
+          <div class="stat-item">
+            <i class="bi bi-journal-check"></i>
+            <div>
+              <h5>0</h5>
+              <p>Lessons Completed</p>
+            </div>
+          </div>
+          <div class="stat-item">
+            <i class="bi bi-patch-check"></i>
+            <div>
+              <h5>0</h5>
+              <p>Quizzes Passed</p>
+            </div>
+          </div>
+          <div class="stat-item">
+            <i class="bi bi-file-earmark-check"></i>
+            <div>
+              <h5>0</h5>
+              <p>Assignments Submitted</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Course Progress -->
+    <div class="row" data-aos="fade-up" data-aos-delay="100">
+      <div class="col-12">
+        <h2 class="mb-4">Course Progress</h2>
+        
+        <div class="empty-state text-center py-5">
+          <i class="bi bi-graph-up display-1 text-muted mb-3"></i>
+          <h3>No Progress Data Available</h3>
+          <p class="text-muted mb-4">Enroll in courses and start learning to see your progress here.</p>
+          <a href="{% url 'courses' %}" class="btn btn-primary">
+            <i class="bi bi-search"></i> Browse Courses
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<style>
+.progress-card {
+  background: white;
+  border-radius: 10px;
+  padding: 30px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.circular-progress {
+  width: 200px;
+  height: 200px;
+  margin: 30px auto;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent-color) 0%, #e9ecef 0%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.circular-progress::before {
+  content: '';
+  width: 160px;
+  height: 160px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+}
+
+.progress-value {
+  position: relative;
+  z-index: 1;
+}
+
+.progress-value .number {
+  font-size: 3rem;
+  font-weight: bold;
+  color: var(--heading-color);
+}
+
+.progress-value .percent {
+  font-size: 1.5rem;
+  color: var(--default-color);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.stat-item {
+  background: white;
+  border-radius: 10px;
+  padding: 25px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.stat-item i {
+  font-size: 2.5rem;
+  color: var(--accent-color);
+}
+
+.stat-item h5 {
+  font-size: 1.8rem;
+  font-weight: bold;
+  margin: 0;
+  color: var(--heading-color);
+}
+
+.stat-item p {
+  margin: 0;
+  color: var(--default-color);
+}
+
+.empty-state {
+  background: white;
+  border-radius: 10px;
+  padding: 60px 20px;
+}
+</style>
+{% endblock %}

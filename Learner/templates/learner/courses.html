@@ -144,28 +144,41 @@
 
             <div class="courses-grid" data-aos="fade-up" data-aos-delay="200">
               <div class="row">
+                
+                <!-- Dynamic Courses from Database -->
+                {% for course in courses %}
                 <div class="col-lg-6 col-md-6">
                   <div class="course-card">
                     <div class="course-image">
-                      <img src="{% static 'img/education/courses-3.webp' %}" alt="Course" class="img-fluid">
-                      <div class="course-badge">Best Seller</div>
-                      <div class="course-price">$89</div>
+                      {% if course.thumbnail %}
+                        <img src="{{ course.thumbnail }}" alt="{{ course.title }}" class="img-fluid">
+                      {% else %}
+                        <img src="{% static 'img/education/courses-3.webp' %}" alt="{{ course.title }}" class="img-fluid">
+                      {% endif %}
+                      {% if course.is_featured %}
+                        <div class="course-badge">Featured</div>
+                      {% endif %}
+                      {% if course.price > 0 %}
+                        <div class="course-price">${{ course.price }}</div>
+                      {% else %}
+                        <div class="course-badge badge-free">Free</div>
+                      {% endif %}
                     </div>
                     <div class="course-content">
                       <div class="course-meta">
-                        <span class="category">Programming</span>
-                        <span class="level">Intermediate</span>
+                        <span class="category">{{ course.category|title }}</span>
+                        <span class="level">{{ course.level|default:course.difficulty_level|title }}</span>
                       </div>
-                      <h3>Advanced JavaScript Development</h3>
-                      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                      <h3>{{ course.title }}</h3>
+                      <p>{{ course.description|truncatewords:20 }}</p>
                       <div class="course-stats">
                         <div class="stat">
                           <i class="bi bi-clock"></i>
-                          <span>15 hours</span>
+                          <span>{{ course.duration_hours|default:0 }} hours</span>
                         </div>
                         <div class="stat">
                           <i class="bi bi-people"></i>
-                          <span>1,245 students</span>
+                          <span>{{ course.enrolled_count|default:0 }} students</span>
                         </div>
                         <div class="rating">
                           <i class="bi bi-star-fill"></i>
@@ -173,18 +186,22 @@
                           <i class="bi bi-star-fill"></i>
                           <i class="bi bi-star-fill"></i>
                           <i class="bi bi-star-half"></i>
-                          <span>4.8 (89 reviews)</span>
+                          <span>{{ course.rating|default:"0.0" }} ({{ course.reviews_count|default:0 }} reviews)</span>
                         </div>
                       </div>
+                      {% if course.instructor %}
                       <div class="instructor-info">
                         <img src="{% static 'img/person/person-m-3.webp' %}" alt="Instructor" class="instructor-avatar">
-                        <span class="instructor-name">Dr. Marcus Thompson</span>
+                        <span class="instructor-name">{{ course.instructor.name }}</span>
                       </div>
-                      <a href="{% url 'enroll' %}" class="btn-course">Enroll Now</a>
+                      {% endif %}
+                      <a href="{% url 'course_detail' course.id %}" class="btn-course">View Course</a>
                     </div>
                   </div><!-- End Course Card -->
                 </div>
-
+                {% endfor %}
+                
+                <!-- Static Example Courses -->
                 <div class="col-lg-6 col-md-6">
                   <div class="course-card">
                     <div class="course-image">
@@ -423,4 +440,22 @@
       </div>
 
     </section><!-- /Courses 2 Section -->
+
+<style>
+.empty-state {
+  background: white;
+  border-radius: 10px;
+  padding: 60px 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.free-badge {
+  background: #28a745;
+  color: white;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+</style>
 {% endblock %}

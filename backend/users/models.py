@@ -12,6 +12,12 @@ class User:
     
     COLLECTION_NAME = 'users'
     
+    # Role enum
+    ROLE_STUDENT = 'student'
+    ROLE_INSTRUCTOR = 'instructor'
+    ROLE_ADMIN = 'admin'
+    ROLES = [ROLE_STUDENT, ROLE_INSTRUCTOR, ROLE_ADMIN]
+    
     def __init__(self, **kwargs):
         self.id = kwargs.get('_id')
         self.email = kwargs.get('email')
@@ -20,7 +26,9 @@ class User:
         self.first_name = kwargs.get('first_name', '')
         self.last_name = kwargs.get('last_name', '')
         self.phone = kwargs.get('phone', '')
-        self.role = kwargs.get('role', 'student')  # student, instructor, admin
+        # Role with validation
+        role = kwargs.get('role', self.ROLE_STUDENT)
+        self.role = role if role in self.ROLES else self.ROLE_STUDENT
         self.is_active = kwargs.get('is_active', True)
         self.is_verified = kwargs.get('is_verified', False)
         self.profile_image = kwargs.get('profile_image', '')
@@ -70,7 +78,9 @@ class User:
         kwargs['updated_at'] = datetime.utcnow()
         kwargs['is_active'] = kwargs.get('is_active', True)
         kwargs['is_verified'] = kwargs.get('is_verified', False)
-        kwargs['role'] = kwargs.get('role', 'student')
+        # Validate and set role
+        role = kwargs.get('role', cls.ROLE_STUDENT)
+        kwargs['role'] = role if role in cls.ROLES else cls.ROLE_STUDENT
         
         print(f"📝 User data to insert:")
         for key, value in kwargs.items():

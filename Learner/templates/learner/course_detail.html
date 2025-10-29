@@ -1,0 +1,558 @@
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}{{ course.title }} - SmartCampus{% endblock %}
+
+{% block body_class %}course-detail-page{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<section class="page-header section light-background">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-8" data-aos="fade-up">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'courses' %}">Courses</a></li>
+            <li class="breadcrumb-item active">{{ course.title }}</li>
+          </ol>
+        </nav>
+        <h1>{{ course.title }}</h1>
+        <p class="lead">{{ course.short_description|default:course.description|truncatewords:30 }}</p>
+        
+        <div class="course-meta-top">
+          <div class="rating">
+            <i class="bi bi-star-fill"></i>
+            <span>{{ course.rating|default:"0.0" }}</span>
+            <span class="text-muted">({{ course.reviews_count|default:0 }} reviews)</span>
+          </div>
+          <div class="students">
+            <i class="bi bi-people"></i>
+            <span>{{ course.enrolled_count|default:0 }} students enrolled</span>
+          </div>
+          <div class="level">
+            <i class="bi bi-bar-chart"></i>
+            <span>{{ course.level|default:course.difficulty_level|title }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Course Detail Section -->
+<section class="course-detail-section section">
+  <div class="container">
+    <div class="row">
+      <!-- Main Content -->
+      <div class="col-lg-8">
+        <!-- Course Image -->
+        <div class="course-hero-image" data-aos="fade-up">
+          {% if course.thumbnail %}
+            <img src="{{ course.thumbnail }}" alt="{{ course.title }}" class="img-fluid rounded">
+          {% else %}
+            <img src="{% static 'img/education/courses-3.webp' %}" alt="{{ course.title }}" class="img-fluid rounded">
+          {% endif %}
+        </div>
+
+        <!-- What You'll Learn -->
+        <div class="course-section" data-aos="fade-up">
+          <h3><i class="bi bi-check-circle"></i> What You'll Learn</h3>
+          <div class="row">
+            <div class="col-md-6">
+              <ul class="learning-objectives">
+                <li><i class="bi bi-check2"></i> Master the fundamental concepts</li>
+                <li><i class="bi bi-check2"></i> Build practical projects</li>
+                <li><i class="bi bi-check2"></i> Apply best practices</li>
+              </ul>
+            </div>
+            <div class="col-md-6">
+              <ul class="learning-objectives">
+                <li><i class="bi bi-check2"></i> Gain hands-on experience</li>
+                <li><i class="bi bi-check2"></i> Earn a certificate</li>
+                <li><i class="bi bi-check2"></i> Join a community of learners</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Course Description -->
+        <div class="course-section" data-aos="fade-up">
+          <h3><i class="bi bi-journal-text"></i> Course Description</h3>
+          <div class="description-content">
+            <p>{{ course.description }}</p>
+          </div>
+        </div>
+
+        <!-- Course Curriculum -->
+        <div class="course-section" data-aos="fade-up">
+          <h3><i class="bi bi-list-ul"></i> Course Curriculum</h3>
+          <p class="text-muted mb-3">{{ modules|length }} modules • Preview available for free lessons</p>
+          
+          <div class="curriculum-list">
+            {% for module in modules %}
+            <div class="curriculum-module">
+              <div class="module-header">
+                <h4>
+                  <i class="bi bi-folder2"></i>
+                  Module {{ forloop.counter }}: {{ module.title }}
+                </h4>
+                <span class="lesson-count">{{ module.lessons|length|default:0 }} lessons</span>
+              </div>
+              
+              {% if module.description %}
+              <p class="module-description">{{ module.description }}</p>
+              {% endif %}
+              
+              <!-- Show lesson titles but lock content -->
+              <div class="lessons-preview">
+                {% if module.lessons %}
+                  {% for lesson in module.lessons %}
+                  <div class="lesson-item {% if not is_enrolled and not lesson.is_free_preview %}locked{% endif %}">
+                    <div class="lesson-info">
+                      <i class="bi {% if lesson.content_type == 'video' %}bi-play-circle{% elif lesson.content_type == 'quiz' %}bi-question-circle{% else %}bi-file-text{% endif %}"></i>
+                      <span class="lesson-title">{{ lesson.title }}</span>
+                    </div>
+                    <div class="lesson-meta">
+                      {% if lesson.is_free_preview %}
+                        <span class="badge bg-success">Preview</span>
+                      {% elif not is_enrolled %}
+                        <i class="bi bi-lock"></i>
+                      {% endif %}
+                      <span class="duration">{{ lesson.duration_minutes|default:0 }} min</span>
+                    </div>
+                  </div>
+                  {% endfor %}
+                {% else %}
+                  <p class="text-muted">Lessons will be available soon</p>
+                {% endif %}
+              </div>
+            </div>
+            {% empty %}
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle"></i> Course curriculum is being prepared
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Requirements -->
+        <div class="course-section" data-aos="fade-up">
+          <h3><i class="bi bi-clipboard-check"></i> Requirements</h3>
+          <ul class="requirements-list">
+            <li>Basic computer skills</li>
+            <li>Enthusiasm to learn</li>
+            <li>No prior experience required</li>
+          </ul>
+        </div>
+
+        <!-- Instructor Info -->
+        <div class="course-section" data-aos="fade-up">
+          <h3><i class="bi bi-person"></i> Your Instructor</h3>
+          <div class="instructor-card">
+            <img src="{% static 'img/person/person-m-3.webp' %}" alt="Instructor" class="instructor-photo">
+            <div class="instructor-details">
+              <h4>{{ course.instructor_name|default:"Expert Instructor" }}</h4>
+              <p class="text-muted">Professional Educator</p>
+              <div class="instructor-stats">
+                <span><i class="bi bi-star-fill"></i> 4.8 Rating</span>
+                <span><i class="bi bi-people"></i> 10,000+ Students</span>
+                <span><i class="bi bi-collection-play"></i> 5 Courses</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="col-lg-4">
+        <div class="course-sidebar" data-aos="fade-left">
+          <!-- Price Card -->
+          <div class="price-card">
+            {% if course.price > 0 %}
+              <div class="price">${{ course.price }}</div>
+            {% else %}
+              <div class="price free">Free</div>
+            {% endif %}
+            
+            {% if is_enrolled %}
+              <a href="{% url 'my_learning' %}" class="btn btn-success btn-lg w-100 mb-2">
+                <i class="bi bi-play-circle"></i> Continue Learning
+              </a>
+              <p class="text-center text-muted"><i class="bi bi-check-circle"></i> You're enrolled!</p>
+            {% else %}
+              <button id="enrollBtn" class="btn btn-primary btn-lg w-100 mb-2" onclick="enrollInCourse()">
+                <i class="bi bi-bookmark-plus"></i> Start Learning
+              </button>
+              <p class="text-center text-muted">30-Day Money-Back Guarantee</p>
+            {% endif %}
+          </div>
+
+          <!-- Course Includes -->
+          <div class="includes-card">
+            <h4>This course includes:</h4>
+            <ul class="includes-list">
+              <li><i class="bi bi-clock"></i> {{ course.duration_hours|default:0 }} hours on-demand content</li>
+              <li><i class="bi bi-file-earmark"></i> Downloadable resources</li>
+              <li><i class="bi bi-phone"></i> Access on mobile and desktop</li>
+              <li><i class="bi bi-infinity"></i> Full lifetime access</li>
+              <li><i class="bi bi-trophy"></i> Certificate of completion</li>
+            </ul>
+          </div>
+
+          <!-- Course Info -->
+          <div class="info-card">
+            <h4>Course Information</h4>
+            <ul class="info-list">
+              <li>
+                <strong>Category:</strong>
+                <span>{{ course.category|title }}</span>
+              </li>
+              <li>
+                <strong>Level:</strong>
+                <span>{{ course.level|default:course.difficulty_level|title }}</span>
+              </li>
+              <li>
+                <strong>Duration:</strong>
+                <span>{{ course.duration_hours|default:0 }} hours</span>
+              </li>
+              <li>
+                <strong>Language:</strong>
+                <span>{{ course.language|default:"English" }}</span>
+              </li>
+              <li>
+                <strong>Last Updated:</strong>
+                <span>{{ course.updated_at|date:"M d, Y" }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Share -->
+          <div class="share-card">
+            <h4>Share this course</h4>
+            <div class="share-buttons">
+              <a href="#" class="btn btn-outline-primary"><i class="bi bi-facebook"></i></a>
+              <a href="#" class="btn btn-outline-info"><i class="bi bi-twitter"></i></a>
+              <a href="#" class="btn btn-outline-success"><i class="bi bi-whatsapp"></i></a>
+              <a href="#" class="btn btn-outline-secondary"><i class="bi bi-link-45deg"></i></a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+.course-meta-top {
+  display: flex;
+  gap: 30px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.course-meta-top > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.course-meta-top i {
+  color: var(--accent-color);
+}
+
+.course-hero-image {
+  margin-bottom: 40px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+
+.course-section {
+  background: white;
+  padding: 30px;
+  border-radius: 10px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.course-section h3 {
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  color: var(--heading-color);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.course-section h3 i {
+  color: var(--accent-color);
+}
+
+.learning-objectives {
+  list-style: none;
+  padding: 0;
+}
+
+.learning-objectives li {
+  padding: 10px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.learning-objectives i {
+  color: #28a745;
+  font-size: 1.2rem;
+  margin-top: 2px;
+}
+
+.curriculum-module {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  overflow: hidden;
+}
+
+.module-header {
+  background: #f8f9fa;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.module-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lesson-count {
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.module-description {
+  padding: 15px 20px;
+  margin: 0;
+  background: #fff;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.lessons-preview {
+  padding: 10px;
+}
+
+.lesson-item {
+  padding: 12px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 6px;
+  margin-bottom: 5px;
+  transition: background 0.3s;
+}
+
+.lesson-item:hover {
+  background: #f8f9fa;
+}
+
+.lesson-item.locked {
+  opacity: 0.7;
+}
+
+.lesson-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lesson-info i {
+  color: var(--accent-color);
+}
+
+.lesson-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.requirements-list {
+  list-style: none;
+  padding: 0;
+}
+
+.requirements-list li {
+  padding: 10px 0;
+  padding-left: 30px;
+  position: relative;
+}
+
+.requirements-list li:before {
+  content: "•";
+  position: absolute;
+  left: 10px;
+  color: var(--accent-color);
+  font-weight: bold;
+}
+
+.instructor-card {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.instructor-photo {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.instructor-details h4 {
+  margin-bottom: 5px;
+}
+
+.instructor-stats {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+  font-size: 0.9rem;
+}
+
+.instructor-stats span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.course-sidebar {
+  position: sticky;
+  top: 100px;
+}
+
+.price-card,
+.includes-card,
+.info-card,
+.share-card {
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+}
+
+.price {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: var(--heading-color);
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.price.free {
+  color: #28a745;
+}
+
+.includes-list,
+.info-list {
+  list-style: none;
+  padding: 0;
+}
+
+.includes-list li,
+.info-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.includes-list li:last-child,
+.info-list li:last-child {
+  border-bottom: none;
+}
+
+.includes-list i {
+  color: var(--accent-color);
+}
+
+.info-list {
+  margin-top: 15px;
+}
+
+.info-list li {
+  display: flex;
+  justify-content: space-between;
+}
+
+.share-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.share-buttons .btn {
+  flex: 1;
+}
+
+@media (max-width: 991px) {
+  .course-sidebar {
+    position: static;
+    margin-top: 30px;
+  }
+}
+</style>
+
+<script>
+const courseId = '{{ course.id }}';
+
+async function enrollInCourse() {
+  const enrollBtn = document.getElementById('enrollBtn');
+  enrollBtn.disabled = true;
+  enrollBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enrolling...';
+
+  // Get JWT token from localStorage
+  const token = localStorage.getItem('access_token');
+
+  try {
+    const response = await fetch(`http://localhost:8001/api/courses/${courseId}/enroll/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : ''
+      }
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      alert('Successfully enrolled in the course!');
+      window.location.reload();
+    } else if (response.status === 401 || response.status === 403) {
+      alert('Please log in to enroll in this course');
+      window.location.href = '{% url "login" %}?next={{ request.path }}';
+    } else {
+      alert(data.error || 'Failed to enroll in course');
+      enrollBtn.disabled = false;
+      enrollBtn.innerHTML = '<i class="bi bi-bookmark-plus"></i> Start Learning';
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('An error occurred. Please try again.');
+    enrollBtn.disabled = false;
+    enrollBtn.innerHTML = '<i class="bi bi-bookmark-plus"></i> Start Learning';
+  }
+}
+</script>
+{% endblock %}
