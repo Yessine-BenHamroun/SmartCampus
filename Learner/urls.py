@@ -62,4 +62,11 @@ urlpatterns = [
     path('instructor/manage-quizzes/', views.manage_quizzes_view, name='manage_quizzes'),
     path('instructor/manage-assignments/', views.manage_assignments_view, name='manage_assignments'),
     path('instructor/submission/<str:submission_id>/grade/', views.grade_submission_view, name='grade_submission'),
+    
+    # Certification URLs
+    path('instructor/course/<str:course_id>/certifications/create/', views.create_certification_view, name='create_certification'),
+    path('instructor/certification/<str:certification_id>/steps/', views.manage_certification_steps_view, name='manage_certification_steps'),
+    path('instructor/certification/<str:certification_id>/steps/add/', views.add_certification_step_view, name='add_certification_step'),
+    path('instructor/certification/step/<str:step_id>/delete/', views.delete_certification_step_view, name='delete_certification_step'),
+    path('my-badges/', views.my_badges_view, name='my_badges'),
 ]

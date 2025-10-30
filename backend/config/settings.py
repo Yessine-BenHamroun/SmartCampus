@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'users',
     'courses',
     'blog',
+    'certifications',
 ]
 
 MIDDLEWARE = [
@@ -165,13 +166,13 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=int(os.getenv('JWT_ACCESS_TOKEN_LIFETIME', 60))),
     'REFRESH_TOKEN_LIFETIME': timedelta(minutes=int(os.getenv('JWT_REFRESH_TOKEN_LIFETIME', 1440))),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
+    'ROTATE_REFRESH_TOKENS': False,  # Disable rotation to avoid user lookup
+    'BLACKLIST_AFTER_ROTATION': False,  # Disable blacklist
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': os.getenv('JWT_SECRET_KEY', SECRET_KEY),
     'AUTH_HEADER_TYPES': ('Bearer',),
-    'USER_ID_FIELD': 'id',
-    'USER_ID_CLAIM': 'user_id',
+    'USER_ID_FIELD': 'email',  # Use email instead of id
+    'USER_ID_CLAIM': 'user_email',  # Custom claim name
 }
 
 # CORS Configuration

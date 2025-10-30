@@ -145,8 +145,9 @@ class LoginView(APIView):
             # Generate JWT tokens
             print(f"🔑 Generating JWT tokens...")
             refresh = RefreshToken()
-            refresh['user_id'] = str(user.id)
-            refresh['email'] = user.email
+            refresh['user_email'] = user.email  # Use email as identifier
+            refresh['user_id'] = str(user.id)  # Keep user_id as string for reference
+            refresh['username'] = user.username
             
             print(f"✅ SUCCESS: Login completed!")
             print(f"🔑 Access Token: {str(refresh.access_token)[:50]}...")
@@ -185,6 +186,56 @@ class LogoutView(APIView):
                 'error': 'Logout failed',
                 'detail': str(e)
             }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CustomTokenRefreshView(APIView):
+    """Custom token refresh view for MongoDB users"""
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        try:
+            refresh_token = request.data.get('refresh')
+            
+            if not refresh_token:
+                return Response({
+                    'error': 'Refresh token is required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Verify and decode the refresh token
+            token = RefreshToken(refresh_token)
+            
+            # Get user email from token
+            user_email = token.get('user_email')
+            
+            if not user_email:
+                return Response({
+                    'error': 'Invalid token'
+                }, status=status.HTTP_401_UNAUTHORIZED)
+            
+            # Find user in MongoDB
+            user = User.find_by_email(user_email)
+            
+            if not user or not user.is_active:
+                return Response({
+                    'error': 'User not found or inactive'
+                }, status=status.HTTP_401_UNAUTHORIZED)
+            
+            # Generate new access token
+            new_token = RefreshToken()
+            new_token['user_email'] = user.email
+            new_token['user_id'] = str(user.id)
+            new_token['username'] = user.username
+            
+            return Response({
+                'access': str(new_token.access_token),
+                'refresh': str(new_token)  # Optional: return new refresh token too
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'error': 'Token refresh failed',
+                'detail': str(e)
+            }, status=status.HTTP_401_UNAUTHORIZED)
 
 
 class ProfileView(APIView):

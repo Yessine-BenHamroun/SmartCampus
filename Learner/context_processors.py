@@ -15,7 +15,13 @@ def api_auth_context(request):
     class APIUser:
         def __init__(self, user_data):
             if user_data:
-                self.id = user_data.get('_id', {}).get('$oid') if isinstance(user_data.get('_id'), dict) else user_data.get('_id')
+                # Extract ID - handle both 'id' and '_id' fields, dict and string formats
+                raw_id = user_data.get('id') or user_data.get('_id')
+                if isinstance(raw_id, dict):
+                    self.id = raw_id.get('$oid')
+                else:
+                    self.id = raw_id
+                
                 self.username = user_data.get('username', '')
                 self.email = user_data.get('email', '')
                 self.first_name = user_data.get('first_name', '')

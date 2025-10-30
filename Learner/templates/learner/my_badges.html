@@ -1,0 +1,235 @@
+{% extends 'learner/base.html' %} {% load static %} {% block title %}My Badges -
+SmartCampus{% endblock %} {% block body_class %}my-badges-page{% endblock %} {%
+block content %}
+<!-- Page Header -->
+<section class="page-header section light-background">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-8" data-aos="fade-up">
+        <h1><i class="bi bi-trophy"></i> My Badges</h1>
+        <p>Your earned certification badges</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Badges Section -->
+<section class="badges-section section">
+  <div class="container">
+    {% if badges %}
+    <div class="row gy-4" data-aos="fade-up">
+      {% for badge in badges %}
+      <div class="col-md-6 col-lg-4">
+        <div class="badge-card">
+          <div class="badge-image">
+            {% if badge.badge_url %}
+            <img
+              src="{{ badge.badge_url }}"
+              alt="{{ badge.certification_title }}"
+            />
+            {% else %}
+            <div class="badge-placeholder">
+              <i class="bi bi-award"></i>
+            </div>
+            {% endif %}
+          </div>
+          <div class="badge-info">
+            <h4>{{ badge.certification_title }}</h4>
+            <p class="course-name">
+              <i class="bi bi-book"></i> {{ badge.course_title|default:"Course"
+              }}
+            </p>
+            <div class="badge-meta">
+              <span class="score">
+                <i class="bi bi-star-fill"></i>
+                Score: {{ badge.final_score }}%
+              </span>
+              <span class="date">
+                <i class="bi bi-calendar"></i>
+                {{ badge.earned_at|date:"M d, Y" }}
+              </span>
+            </div>
+            <div class="verification-code">
+              <label>Verification Code:</label>
+              <div class="code-display">
+                <code>{{ badge.verification_code }}</code>
+                <button
+                  class="btn btn-sm btn-outline-primary"
+                  onclick="copyCode('{{ badge.verification_code }}')"
+                >
+                  <i class="bi bi-clipboard"></i>
+                </button>
+              </div>
+            </div>
+            <div class="badge-actions">
+              <a
+                href="/verify-badge/{{ badge.verification_code }}/"
+                target="_blank"
+                class="btn btn-sm btn-outline-secondary"
+              >
+                <i class="bi bi-shield-check"></i> Verify
+              </a>
+              <button
+                class="btn btn-sm btn-primary"
+                onclick="shareBadge('{{ badge.verification_code }}')"
+              >
+                <i class="bi bi-share"></i> Share
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state text-center py-5" data-aos="fade-up">
+      <i class="bi bi-trophy display-1 text-muted mb-3"></i>
+      <h3>No Badges Earned Yet</h3>
+      <p class="text-muted mb-4">
+        Complete course certifications to earn badges.
+      </p>
+      <a href="{% url 'courses' %}" class="btn btn-primary">
+        <i class="bi bi-mortarboard"></i> Browse Courses
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<style>
+  .badge-card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    transition: transform 0.3s;
+  }
+
+  .badge-card:hover {
+    transform: translateY(-5px);
+  }
+
+  .badge-image {
+    background: linear-gradient(135deg, var(--accent-color), #6610f2);
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .badge-image img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  .badge-placeholder {
+    font-size: 5rem;
+    color: white;
+  }
+
+  .badge-info {
+    padding: 20px;
+  }
+
+  .badge-info h4 {
+    margin-bottom: 10px;
+    color: var(--heading-color);
+  }
+
+  .course-name {
+    color: var(--default-color);
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+  }
+
+  .badge-meta {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 0.9rem;
+    color: #6c757d;
+  }
+
+  .badge-meta span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .badge-meta i {
+    color: var(--accent-color);
+  }
+
+  .verification-code {
+    margin-bottom: 15px;
+  }
+
+  .verification-code label {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-bottom: 5px;
+    display: block;
+  }
+
+  .code-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .code-display code {
+    background: #f8f9fa;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    flex: 1;
+    border: 1px solid #dee2e6;
+  }
+
+  .badge-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .badge-actions .btn {
+    flex: 1;
+  }
+
+  .empty-state {
+    background: white;
+    border-radius: 10px;
+    padding: 60px 20px;
+  }
+</style>
+
+<script>
+  function copyCode(code) {
+    navigator.clipboard.writeText(code).then(() => {
+      alert("Verification code copied to clipboard!");
+    });
+  }
+
+  function shareBadge(code) {
+    const url = `${window.location.origin}/verify-badge/${code}/`;
+    const text = `Check out my certification badge: ${url}`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: "My Certification Badge",
+        text: text,
+        url: url,
+      });
+    } else {
+      navigator.clipboard.writeText(text).then(() => {
+        alert("Badge link copied to clipboard!");
+      });
+    }
+  }
+</script>
+{% endblock %}

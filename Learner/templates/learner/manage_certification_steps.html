@@ -1,0 +1,496 @@
+{% extends 'learner/base.html' %} {% load static %} {% block title %}Manage
+Certification Steps - {{ certification.title }}{% endblock %} {% block extra_css
+%}
+<style>
+  .steps-container {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 20px;
+  }
+
+  .cert-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+  }
+
+  .step-card {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s;
+  }
+
+  .step-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  }
+
+  .step-number {
+    background: #667eea;
+    color: white;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 20px;
+    margin-right: 20px;
+    flex-shrink: 0;
+  }
+
+  .step-info {
+    flex-grow: 1;
+  }
+
+  .step-type-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-left: 10px;
+  }
+
+  .step-type-video {
+    background: #e3f2fd;
+    color: #1976d2;
+  }
+
+  .step-type-reading {
+    background: #f3e5f5;
+    color: #7b1fa2;
+  }
+
+  .step-type-quiz {
+    background: #fff3e0;
+    color: #f57c00;
+  }
+
+  .step-type-assignment {
+    background: #e8f5e9;
+    color: #388e3c;
+  }
+
+  .step-type-exam {
+    background: #ffebee;
+    color: #d32f2f;
+  }
+
+  .step-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .add-step-form {
+    background: white;
+    border: 2px dashed #dee2e6;
+    border-radius: 10px;
+    padding: 30px;
+    margin-top: 20px;
+  }
+
+  .form-section {
+    margin-bottom: 20px;
+  }
+
+  .final-exam-section {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-top: 30px;
+  }
+
+  .exam-card {
+    background: rgba(255, 255, 255, 0.95);
+    color: #333;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 15px;
+  }
+
+  .no-steps {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="steps-container">
+  <!-- Certification Header -->
+  <div class="cert-header">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h2><i class="bi bi-trophy"></i> {{ certification.title }}</h2>
+        <p class="mb-0">{{ certification.description }}</p>
+        <div class="mt-3">
+          <span class="badge bg-light text-dark">
+            <i class="bi bi-bullseye"></i> Passing Score: {{
+            certification.passing_score }}%
+          </span>
+          <span class="badge bg-light text-dark ms-2">
+            <i class="bi bi-list-ol"></i> {{ steps|length }} Steps
+          </span>
+        </div>
+      </div>
+      {% if certification.course_id %}
+      <a
+        href="{% url 'course_detail' certification.course_id %}"
+        class="btn btn-light"
+      >
+        <i class="bi bi-arrow-left"></i> Back to Course
+      </a>
+      {% else %}
+      <a href="{% url 'instructor_courses' %}" class="btn btn-light">
+        <i class="bi bi-arrow-left"></i> Back
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Steps List -->
+  <div class="mb-4">
+    <h4><i class="bi bi-list-check"></i> Certification Steps</h4>
+    <p class="text-muted">
+      Students must complete these steps sequentially before taking the final
+      exam
+    </p>
+
+    {% if steps %}
+    <div class="steps-list">
+      {% for step in steps %}
+      <div class="step-card">
+        <div class="step-number">{{ step.step_number }}</div>
+        <div class="step-info">
+          <h5>
+            {{ step.title }}
+            <span class="step-type-badge step-type-{{ step.step_type }}">
+              <i
+                class="bi bi-{% if step.step_type == 'video' %}camera-video{% elif step.step_type == 'reading' %}book{% elif step.step_type == 'quiz' %}question-circle{% elif step.step_type == 'assignment' %}pencil-square{% else %}clipboard-check{% endif %}"
+              ></i>
+              {{ step.step_type }}
+            </span>
+          </h5>
+          <p class="text-muted mb-1">{{ step.description|truncatewords:30 }}</p>
+          {% if step.content_url %}
+          <small><i class="bi bi-link-45deg"></i> {{ step.content_url }}</small>
+          {% endif %}
+        </div>
+        <div class="step-actions">
+          <button
+            class="btn btn-sm btn-outline-primary"
+            onclick="editStep('{{ step.id }}')"
+          >
+            <i class="bi bi-pencil"></i> Edit
+          </button>
+          <button
+            class="btn btn-sm btn-outline-danger"
+            onclick="deleteStep('{{ step.id }}', '{{ step.title }}')"
+          >
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-steps">
+      <i class="bi bi-inbox" style="font-size: 48px; color: #dee2e6"></i>
+      <h5 class="mt-3">No steps added yet</h5>
+      <p class="text-muted">Add your first step below to get started</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Add New Step Form -->
+  <div class="add-step-form">
+    <h5><i class="bi bi-plus-circle"></i> Add New Step</h5>
+    <form
+      method="POST"
+      action="{% url 'add_certification_step' certification.id %}"
+      id="addStepForm"
+      enctype="multipart/form-data"
+    >
+      {% csrf_token %}
+
+      <div class="row">
+        <div class="col-md-8 form-section">
+          <label class="form-label">Step Title *</label>
+          <input
+            type="text"
+            name="title"
+            class="form-control"
+            required
+            placeholder="e.g., Introduction to DevOps"
+          />
+        </div>
+
+        <div class="col-md-4 form-section">
+          <label class="form-label">Step Type *</label>
+          <select name="step_type" class="form-select" id="stepType" required>
+            <option value="">Select type...</option>
+            <option value="video">📹 Video</option>
+            <option value="reading">📖 Reading (PDF/Article)</option>
+            <option value="quiz">❓ Quiz</option>
+            <option value="assignment">✏️ Assignment</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <label class="form-label">Description *</label>
+        <textarea
+          name="description"
+          class="form-control"
+          rows="3"
+          required
+          placeholder="What will students learn in this step?"
+        ></textarea>
+      </div>
+
+      <!-- Content Upload/URL Section -->
+      <div id="videoUploadSection" style="display: none">
+        <div class="form-section">
+          <label class="form-label">Upload Video File *</label>
+          <input
+            type="file"
+            name="video_file"
+            id="videoFile"
+            class="form-control"
+            accept="video/*"
+          />
+          <small class="text-muted"
+            >Supported formats: MP4, WebM, AVI (Max 500MB)</small
+          >
+        </div>
+        <div class="text-center my-2">
+          <span class="text-muted">- OR -</span>
+        </div>
+        <div class="form-section">
+          <label class="form-label">Video URL</label>
+          <input
+            type="url"
+            name="content_url"
+            id="videoUrl"
+            class="form-control"
+            placeholder="https://youtube.com/... or https://vimeo.com/..."
+          />
+          <small class="text-muted"
+            >Provide a YouTube, Vimeo, or direct video link</small
+          >
+        </div>
+      </div>
+
+      <div id="pdfUploadSection" style="display: none">
+        <div class="form-section">
+          <label class="form-label">Upload PDF File *</label>
+          <input
+            type="file"
+            name="pdf_file"
+            id="pdfFile"
+            class="form-control"
+            accept=".pdf"
+          />
+          <small class="text-muted">Upload a PDF document (Max 50MB)</small>
+        </div>
+        <div class="text-center my-2">
+          <span class="text-muted">- OR -</span>
+        </div>
+        <div class="form-section">
+          <label class="form-label">Document URL</label>
+          <input
+            type="url"
+            name="content_url"
+            id="pdfUrl"
+            class="form-control"
+            placeholder="https://example.com/document.pdf"
+          />
+          <small class="text-muted"
+            >Provide a direct link to the PDF file</small
+          >
+        </div>
+      </div>
+
+      <div id="linkSection" style="display: none">
+        <div class="form-section">
+          <label class="form-label">Content URL *</label>
+          <input
+            type="url"
+            name="content_url"
+            id="contentUrl"
+            class="form-control"
+            required
+            placeholder="https://example.com/quiz or assignment link"
+          />
+          <small class="text-muted"
+            >Provide a direct link to the quiz or assignment</small
+          >
+        </div>
+      </div>
+
+      <div class="form-section">
+        <label class="form-label">Estimated Duration (minutes)</label>
+        <input
+          type="number"
+          name="estimated_duration"
+          class="form-control"
+          min="1"
+          placeholder="30"
+        />
+      </div>
+
+      <div id="quizFields" style="display: none">
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i> For quiz/assignment steps, you can
+          add questions after creating the step
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mt-4">
+        <small class="text-muted"
+          >Step will be added as step #{{ steps|length|add:1 }}</small
+        >
+        <div>
+          <button type="reset" class="btn btn-outline-secondary me-2">
+            Clear
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Add Step
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Final Exam Section -->
+  <div class="final-exam-section">
+    <h4><i class="bi bi-clipboard-check"></i> Final Exam</h4>
+    <p class="mb-3">
+      Students must pass all steps above before they can take the final exam to
+      earn their certification
+    </p>
+
+    <div class="text-center">
+      <p class="text-light">
+        Final exam functionality coming soon. You can add an exam as a regular
+        step with type "exam" for now.
+      </p>
+      <small class="text-light"
+        >Simply add a new step above and select "Assignment" or "Quiz" as the
+        final assessment</small
+      >
+    </div>
+  </div>
+</div>
+
+<script>
+  // Show/hide upload sections based on step type
+  document.getElementById("stepType").addEventListener("change", function () {
+    const stepType = this.value;
+    const quizFields = document.getElementById("quizFields");
+    const videoUploadSection = document.getElementById("videoUploadSection");
+    const pdfUploadSection = document.getElementById("pdfUploadSection");
+    const linkSection = document.getElementById("linkSection");
+
+    // Hide all sections first
+    videoUploadSection.style.display = "none";
+    pdfUploadSection.style.display = "none";
+    linkSection.style.display = "none";
+    quizFields.style.display = "none";
+
+    // Clear file inputs
+    document.getElementById("videoFile").value = "";
+    document.getElementById("pdfFile").value = "";
+
+    // Clear URL inputs
+    if (document.getElementById("videoUrl"))
+      document.getElementById("videoUrl").value = "";
+    if (document.getElementById("pdfUrl"))
+      document.getElementById("pdfUrl").value = "";
+    if (document.getElementById("contentUrl"))
+      document.getElementById("contentUrl").value = "";
+
+    // Remove required attributes
+    document.getElementById("videoFile").removeAttribute("required");
+    document.getElementById("pdfFile").removeAttribute("required");
+    if (document.getElementById("contentUrl"))
+      document.getElementById("contentUrl").removeAttribute("required");
+
+    // Show appropriate section
+    if (stepType === "video") {
+      videoUploadSection.style.display = "block";
+    } else if (stepType === "reading") {
+      pdfUploadSection.style.display = "block";
+    } else if (stepType === "quiz" || stepType === "assignment") {
+      linkSection.style.display = "block";
+      quizFields.style.display = "block";
+      document
+        .getElementById("contentUrl")
+        .setAttribute("required", "required");
+    }
+  });
+
+  // Form validation - ensure either file upload or URL is provided
+  document
+    .getElementById("addStepForm")
+    .addEventListener("submit", function (e) {
+      const stepType = document.getElementById("stepType").value;
+
+      if (stepType === "video") {
+        const videoFile = document.getElementById("videoFile").files.length > 0;
+        const videoUrl = document.getElementById("videoUrl").value.trim();
+
+        if (!videoFile && !videoUrl) {
+          e.preventDefault();
+          alert("Please either upload a video file or provide a video URL");
+          return false;
+        }
+      } else if (stepType === "reading") {
+        const pdfFile = document.getElementById("pdfFile").files.length > 0;
+        const pdfUrl = document.getElementById("pdfUrl").value.trim();
+
+        if (!pdfFile && !pdfUrl) {
+          e.preventDefault();
+          alert("Please either upload a PDF file or provide a document URL");
+          return false;
+        }
+      }
+    });
+
+  // Edit step
+  function editStep(stepId) {
+    // TODO: Implement edit functionality
+    alert("Edit step " + stepId);
+  }
+
+  // Delete step
+  function deleteStep(stepId, stepTitle) {
+    if (confirm('Are you sure you want to delete "' + stepTitle + '"?')) {
+      // Create form and submit
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = "/instructor/certification/step/" + stepId + "/delete/";
+
+      const csrf = document.querySelector("[name=csrfmiddlewaretoken]").value;
+      const csrfInput = document.createElement("input");
+      csrfInput.type = "hidden";
+      csrfInput.name = "csrfmiddlewaretoken";
+      csrfInput.value = csrf;
+      form.appendChild(csrfInput);
+
+      document.body.appendChild(form);
+      form.submit();
+    }
+  }
+</script>
+{% endblock %}

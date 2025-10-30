@@ -57,6 +57,8 @@ def course_detail(request, course_id):
     course = None
     modules = []
     is_enrolled = False
+    certifications = []
+    my_progress = []
     
     try:
         # Fetch course details from backend API
@@ -85,13 +87,49 @@ def course_detail(request, course_id):
             # Check if user is enrolled (if logged in)
             if api_is_authenticated(request):
                 access_token = get_access_token(request)
-                enrollment_response = requests.get(
-                    f'http://localhost:8001/api/courses/{course_id}/enrollment/check/',
-                    headers={'Authorization': f'Bearer {access_token}'}
-                )
-                if enrollment_response.status_code == 200:
-                    enrollment_data = enrollment_response.json()
-                    is_enrolled = enrollment_data.get('is_enrolled', False)
+                
+                # Check enrollment by fetching user's enrollments
+                try:
+                    enrollments_response = requests.get(
+                        'http://localhost:8001/api/courses/my/enrollments/',
+                        headers={'Authorization': f'Bearer {access_token}'}
+                    )
+                    if enrollments_response.status_code == 200:
+                        enrollments_data = enrollments_response.json()
+                        enrollments = enrollments_data.get('enrollments', [])
+                        # Check if current course is in enrollments
+                        is_enrolled = any(e.get('course_id') == course_id for e in enrollments)
+                except Exception as e:
+                    print(f"Error checking enrollment: {str(e)}")
+                
+                # Fetch available certifications for this course (requires auth)
+                try:
+                    cert_response = requests.get(
+                        'http://localhost:8001/api/certifications/available/',
+                        headers={'Authorization': f'Bearer {access_token}'}
+                    )
+                    if cert_response.status_code == 200:
+                        cert_data = cert_response.json()
+                        all_certs = cert_data.get('certifications', [])
+                        # Filter certifications for this specific course
+                        certifications = [cert for cert in all_certs if cert.get('course_id') == course_id]
+                except Exception as e:
+                    print(f"Error fetching certifications: {str(e)}")
+                
+                # Fetch user's certification progress if enrolled
+                if is_enrolled:
+                    try:
+                        progress_response = requests.get(
+                            'http://localhost:8001/api/certifications/my-progress/',
+                            headers={'Authorization': f'Bearer {access_token}'}
+                        )
+                        if progress_response.status_code == 200:
+                            progress_data = progress_response.json()
+                            all_progress = progress_data.get('progress', [])
+                            # Filter progress for this course
+                            my_progress = [p for p in all_progress if p.get('course_id') == course_id]
+                    except Exception as e:
+                        print(f"Error fetching certification progress: {str(e)}")
                     
     except Exception as e:
         print(f"Error fetching course details: {str(e)}")
@@ -101,7 +139,9 @@ def course_detail(request, course_id):
     context = {
         'course': course,
         'modules': modules,
-        'is_enrolled': is_enrolled
+        'is_enrolled': is_enrolled,
+        'certifications': certifications,
+        'my_progress': my_progress
     }
     
     return render(request, 'learner/course_detail.html', context)
@@ -985,3 +1025,393 @@ def grade_submission_view(request, submission_id):
     }
     
     return render(request, 'learner/grade_submission.html', context)
+
+
+# Certification Views
+
+@api_login_required
+def create_certification_view(request, course_id):
+    """Create certification for a course (Instructor only)"""
+    import requests
+    import json
+    
+    user = get_current_user(request)
+    
+    # Check if user has instructor or admin role
+    user_role = user.get('role', 'student')
+    if user_role not in ['instructor', 'admin']:
+        messages.error(request, 'Access denied. Instructor privileges required.')
+        return redirect('index')
+    
+    access_token = get_access_token(request)
+    course = None
+    
+    try:
+        course_response = requests.get(
+            f'http://localhost:8001/api/courses/{course_id}/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        if course_response.status_code == 200:
+            course_data = course_response.json()
+            course = course_data.get('course')
+    except Exception as e:
+        messages.error(request, f'Error fetching course: {str(e)}')
+        return redirect('instructor_courses')
+    
+    if request.method == 'POST':
+        try:
+            # Get badge_image, set to None if empty
+            badge_image = request.POST.get('badge_image', '').strip()
+            if not badge_image:
+                badge_image = None
+            
+            certification_data = {
+                'course_id': course_id,
+                'title': request.POST.get('title'),
+                'description': request.POST.get('description'),
+                'passing_score': int(request.POST.get('passing_score', 70)),
+                'is_active': request.POST.get('is_active') == 'on'
+            }
+            
+            # Only include badge_image if it has a value
+            if badge_image:
+                certification_data['badge_image'] = badge_image
+            
+            # Debug: Print the data being sent
+            print(f"📤 Sending certification data: {certification_data}")
+            
+            response = requests.post(
+                'http://localhost:8001/api/certifications/create/',
+                json=certification_data,
+                headers={'Authorization': f'Bearer {access_token}'}
+            )
+            
+            print(f"📥 Response status: {response.status_code}")
+            print(f"📥 Response body: {response.text}")
+            
+            if response.status_code == 201:
+                data = response.json()
+                certification_id = data.get('certification', {}).get('id')
+                messages.success(request, 'Certification created successfully!')
+                # Redirect to manage steps page
+                if certification_id:
+                    return redirect('manage_certification_steps', certification_id=certification_id)
+                else:
+                    return redirect('course_detail', course_id=course_id)
+            else:
+                error_data = response.json()
+                error_msg = error_data.get('error', error_data)
+                messages.error(request, f'Failed to create certification: {error_msg}')
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+            print(f"❌ Exception: {str(e)}")
+    
+    context = {
+        'course_id': course_id,
+        'course': course,
+        'page_title': 'Create Certification'
+    }
+    
+    return render(request, 'learner/create_certification.html', context)
+
+
+@api_login_required
+def my_badges_view(request):
+    """View all earned badges"""
+    import requests
+    
+    access_token = get_access_token(request)
+    badges = []
+    
+    try:
+        response = requests.get(
+            'http://localhost:8001/api/certifications/my-badges/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            badges = data.get('badges', [])
+    except Exception as e:
+        messages.error(request, f'Error fetching badges: {str(e)}')
+    
+    context = {
+        'page_title': 'My Badges',
+        'badges': badges
+    }
+    
+    return render(request, 'learner/my_badges.html', context)
+
+
+@api_login_required
+def manage_certification_steps_view(request, certification_id):
+    """Manage certification steps (Instructor only)"""
+    import requests
+    
+    user = get_current_user(request)
+    user_role = user.get('role', 'student')
+    
+    if user_role not in ['instructor', 'admin']:
+        messages.error(request, 'Access denied. Instructor privileges required.')
+        return redirect('index')
+    
+    access_token = get_access_token(request)
+    certification = None
+    steps = []
+    final_exam = None
+    
+    try:
+        # Fetch all certifications and find the one we need
+        cert_response = requests.get(
+            'http://localhost:8001/api/certifications/available/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        if cert_response.status_code == 200:
+            cert_data = cert_response.json()
+            all_certs = cert_data.get('certifications', [])
+            # Find the specific certification
+            certification = next((c for c in all_certs if c.get('id') == certification_id), None)
+            
+            if not certification:
+                messages.error(request, 'Certification not found')
+                return redirect('instructor_courses')
+        
+        # Fetch certification steps
+        steps_response = requests.get(
+            f'http://localhost:8001/api/certifications/{certification_id}/steps/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        print(f"📥 Steps API Response Status: {steps_response.status_code}")
+        print(f"📥 Steps API Response Body: {steps_response.text}")
+        
+        if steps_response.status_code == 200:
+            steps_data = steps_response.json()
+            print(f"📊 Steps Data: {steps_data}")
+            steps = steps_data.get('steps', [])
+            print(f"📊 Number of steps found: {len(steps)}")
+            # Sort by step_number
+            steps.sort(key=lambda x: x.get('step_number', 0))
+        
+        # Check if final exam exists (exam is a step with step_type='exam')
+        final_exam = next((s for s in steps if s.get('step_type') == 'exam'), None)
+        # Remove exam from regular steps list
+        steps = [s for s in steps if s.get('step_type') != 'exam']
+        print(f"📊 Steps after filtering: {len(steps)}")
+        
+    except Exception as e:
+        messages.error(request, f'Error fetching certification: {str(e)}')
+        print(f"❌ Exception: {str(e)}")
+    
+    context = {
+        'certification': certification,
+        'steps': steps,
+        'final_exam': final_exam,
+        'page_title': f'Manage Steps - {certification.get("title") if certification else "Certification"}'
+    }
+    
+    return render(request, 'learner/manage_certification_steps.html', context)
+
+
+@api_login_required
+def add_certification_step_view(request, certification_id):
+    """Add a step to certification (Instructor only)"""
+    import requests
+    import base64
+    
+    if request.method != 'POST':
+        return redirect('manage_certification_steps', certification_id=certification_id)
+    
+    user = get_current_user(request)
+    user_role = user.get('role', 'student')
+    
+    if user_role not in ['instructor', 'admin']:
+        messages.error(request, 'Access denied.')
+        return redirect('index')
+    
+    access_token = get_access_token(request)
+    
+    try:
+        print("🔵 Starting to add certification step...")
+        print(f"📋 Form data received: {dict(request.POST)}")
+        print(f"📁 Files received: {dict(request.FILES)}")
+        
+        # First, get current steps to determine the next step number
+        steps_response = requests.get(
+            f'http://localhost:8001/api/certifications/{certification_id}/steps/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        
+        next_step_number = 1
+        if steps_response.status_code == 200:
+            steps_data = steps_response.json()
+            current_steps = steps_data.get('steps', [])
+            print(f"📊 Current steps count: {len(current_steps)}")
+            if current_steps:
+                max_step = max(step.get('step_number', 0) for step in current_steps)
+                next_step_number = max_step + 1
+        
+        print(f"🔢 Next step number will be: {next_step_number}")
+        
+        step_type = request.POST.get('step_type')
+        print(f"📝 Step type: {step_type}")
+        content_url = None
+        
+        # Handle file uploads for video and PDF
+        if step_type == 'video':
+            video_file = request.FILES.get('video_file')
+            video_url = request.POST.get('content_url', '').strip()
+            
+            if video_file:
+                # Save video file to media folder
+                import os
+                from django.conf import settings
+                from django.core.files.storage import default_storage
+                
+                # Create filename with timestamp
+                timestamp = int(time.time())
+                file_extension = video_file.name.split('.')[-1]
+                filename = f"cert_video_{certification_id}_{timestamp}.{file_extension}"
+                
+                # Save file
+                file_path = os.path.join('certifications', 'videos', filename)
+                saved_path = default_storage.save(file_path, video_file)
+                
+                # Generate URL
+                content_url = f"/media/{saved_path}"
+                print(f"💾 Video saved to: {content_url}")
+            elif video_url:
+                content_url = video_url
+            else:
+                messages.error(request, 'Please provide either a video file or URL')
+                return redirect('manage_certification_steps', certification_id=certification_id)
+                
+        elif step_type == 'reading':
+            pdf_file = request.FILES.get('pdf_file')
+            pdf_url = request.POST.get('content_url', '').strip()
+            
+            if pdf_file:
+                # Save PDF file to media folder
+                import os
+                from django.conf import settings
+                from django.core.files.storage import default_storage
+                
+                # Create filename with timestamp
+                timestamp = int(time.time())
+                file_extension = pdf_file.name.split('.')[-1]
+                filename = f"cert_pdf_{certification_id}_{timestamp}.{file_extension}"
+                
+                # Save file
+                file_path = os.path.join('certifications', 'pdfs', filename)
+                saved_path = default_storage.save(file_path, pdf_file)
+                
+                # Generate URL
+                content_url = f"/media/{saved_path}"
+                print(f"💾 PDF saved to: {content_url}")
+            elif pdf_url:
+                content_url = pdf_url
+            else:
+                messages.error(request, 'Please provide either a PDF file or URL')
+                return redirect('manage_certification_steps', certification_id=certification_id)
+        else:
+            # For quiz/assignment, just use the URL
+            content_url = request.POST.get('content_url', '').strip()
+            if not content_url:
+                messages.error(request, 'Please provide a content URL')
+                return redirect('manage_certification_steps', certification_id=certification_id)
+        
+        # Get estimated_duration, set to None if empty
+        estimated_duration = request.POST.get('estimated_duration', '').strip()
+        if estimated_duration:
+            estimated_duration = int(estimated_duration)
+        else:
+            estimated_duration = 0
+        
+        # Build content object based on step type
+        content = {}
+        if step_type == 'video':
+            content = {'video_url': content_url}
+        elif step_type == 'reading':
+            content = {'document_url': content_url}
+        else:
+            content = {'url': content_url}
+        
+        step_data = {
+            'certification_id': certification_id,
+            'step_number': next_step_number,
+            'title': request.POST.get('title'),
+            'description': request.POST.get('description'),
+            'step_type': step_type,
+            'content': content,
+            'duration_minutes': estimated_duration
+        }
+        
+        print(f"📤 Sending step data: {step_data}")
+        
+        response = requests.post(
+            f'http://localhost:8001/api/certifications/{certification_id}/steps/add/',
+            json=step_data,
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        
+        print(f"📥 Response status: {response.status_code}")
+        print(f"📥 Response body: {response.text}")
+        
+        if response.status_code == 201:
+            messages.success(request, 'Step added successfully!')
+        else:
+            error_data = response.json()
+            error_msg = error_data.get('error', error_data)
+            messages.error(request, f'Failed to add step: {error_msg}')
+    except Exception as e:
+        messages.error(request, f'Error: {str(e)}')
+        print(f"❌ Exception: {str(e)}")
+    
+    return redirect('manage_certification_steps', certification_id=certification_id)
+
+
+@api_login_required
+def delete_certification_step_view(request, step_id):
+    """Delete a certification step (Instructor only)"""
+    import requests
+    
+    if request.method != 'POST':
+        return redirect('instructor_courses')
+    
+    user = get_current_user(request)
+    user_role = user.get('role', 'student')
+    
+    if user_role not in ['instructor', 'admin']:
+        messages.error(request, 'Access denied.')
+        return redirect('index')
+    
+    access_token = get_access_token(request)
+    certification_id = None
+    
+    try:
+        # Get step details to find certification_id
+        step_response = requests.get(
+            f'http://localhost:8001/api/certifications/step/{step_id}/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        if step_response.status_code == 200:
+            step_data = step_response.json()
+            certification_id = step_data.get('step', {}).get('certification_id')
+        
+        # Delete the step
+        response = requests.delete(
+            f'http://localhost:8001/api/certifications/step/{step_id}/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        
+        if response.status_code == 200:
+            messages.success(request, 'Step deleted successfully!')
+        else:
+            messages.error(request, 'Failed to delete step')
+    except Exception as e:
+        messages.error(request, f'Error: {str(e)}')
+    
+    if certification_id:
+        return redirect('manage_certification_steps', certification_id=certification_id)
+    else:
+        return redirect('instructor_courses')
+
