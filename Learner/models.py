@@ -2,11 +2,17 @@ from django.db import models
 from pymongo import MongoClient
 from django.conf import settings
 
-# MongoDB connection helper
+# MongoDB connection helper (global client cache)
+_mongo_client = None
+
 def get_db():
     """Get MongoDB database connection"""
-    client = MongoClient(settings.MONGODB_SETTINGS['host'])
-    return client[settings.MONGODB_SETTINGS['db_name']]
+    global _mongo_client
+    if _mongo_client is None:
+        _mongo_client = MongoClient(settings.MONGODB_SETTINGS['host'])
+    
+    db_name = settings.MONGODB_SETTINGS['db_name']
+    return _mongo_client[db_name]
 
 # Example: Working with MongoDB collections
 # You can use this in your views like:

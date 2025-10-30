@@ -23,6 +23,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('Learner.urls')),
     path('chat/', include('chat.urls')),  # URLs pour le chat en temps réel
+    path('meetings/', include('meetings.urls')),  # URLs pour les visioconférences
 ]
 
 # Serve static and media files in development

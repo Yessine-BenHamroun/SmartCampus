@@ -48,11 +48,13 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'channels',
     
     # Local apps
     'users',
     'courses',
     'blog',
+    'chat',
 ]
 
 MIDDLEWARE = [
@@ -90,10 +92,18 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# MongoDB URI from environment
+MONGODB_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017/')
+MONGODB_NAME = os.getenv('MONGO_DB_NAME', 'smartcampus_db')
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'djongo',
+        'NAME': MONGODB_NAME,
+        'ENFORCE_SCHEMA': False,
+        'CLIENT': {
+            'host': MONGODB_URI,
+        }
     }
 }
 

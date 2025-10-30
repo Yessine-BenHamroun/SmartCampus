@@ -150,14 +150,14 @@ function addMessage(data) {
         messageHTML += `
             <div class="message-actions">
                 <div class="message-menu">
-                    <button class="message-menu-btn" onclick="toggleMenu(${data.message_id}, event)" title="Options">
+                    <button class="message-menu-btn" onclick="toggleMenu('${data.message_id}', event)" title="Options">
                         <i class="bi bi-three-dots-vertical"></i>
                     </button>
                     <div class="message-dropdown" id="menu-${data.message_id}">
-                        <button class="dropdown-item edit-item" onclick="editMessage(${data.message_id}, event)">
+                        <button class="dropdown-item edit-item" onclick="editMessage('${data.message_id}', event)">
                             <i class="bi bi-pencil"></i> Modifier
                         </button>
-                        <button class="dropdown-item delete-item" onclick="deleteMessage(${data.message_id}, event)">
+                        <button class="dropdown-item delete-item" onclick="deleteMessage('${data.message_id}', event)">
                             <i class="bi bi-trash"></i> Supprimer
                         </button>
                     </div>
@@ -280,6 +280,8 @@ function editMessage(messageId, event) {
         event.stopPropagation();
     }
     
+    console.log('🖊️ Edition du message:', messageId);
+    
     // Fermer le menu déroulant
     const menu = document.getElementById(`menu-${messageId}`);
     if (menu) {
@@ -287,12 +289,21 @@ function editMessage(messageId, event) {
     }
     
     const messageDiv = document.querySelector(`.message[data-message-id="${messageId}"]`);
-    if (!messageDiv) return;
+    if (!messageDiv) {
+        console.error('❌ Message non trouvé');
+        return;
+    }
     
     const contentDiv = messageDiv.querySelector('.message-content');
-    if (!contentDiv) return;
+    if (!contentDiv) {
+        console.error('❌ Contenu non trouvé');
+        return;
+    }
     
-    const originalContent = contentDiv.textContent;
+    const originalContent = contentDiv.textContent.trim();
+    
+    // Sauvegarder le contenu original
+    contentDiv.dataset.originalContent = originalContent;
     
     // Ajouter classe d'édition au message
     messageDiv.classList.add('edit-mode');
@@ -303,51 +314,90 @@ function editMessage(messageId, event) {
         actionsMenu.style.display = 'none';
     }
     
-    // Rendre le contenu éditable
+    // Rendre le contenu éditable avec styles forcés
     contentDiv.contentEditable = true;
-    contentDiv.style.cursor = 'text';
-    
-    // Focus et sélection du texte avec un délai pour éviter le bug du curseur
-    setTimeout(() => {
-        contentDiv.focus();
-        
-        // Sélectionner tout le texte
-        const range = document.createRange();
-        range.selectNodeContents(contentDiv);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
-    }, 10);
+    contentDiv.style.cssText = `
+        cursor: text !important;
+        background: #fffacd !important;
+        padding: 10px !important;
+        border-radius: 8px !important;
+        border: 2px solid #4CAF50 !important;
+        outline: none !important;
+        min-height: 40px !important;
+        user-select: text !important;
+        -webkit-user-select: text !important;
+    `;
     
     // Créer les boutons de validation/annulation
     const footer = messageDiv.querySelector('.message-footer');
-    if (!footer) return;
+    if (!footer) {
+        console.error('❌ Footer non trouvé');
+        return;
+    }
     
     const actionsDiv = document.createElement('div');
     actionsDiv.className = 'edit-actions';
     actionsDiv.id = `edit-actions-${messageId}`;
     actionsDiv.innerHTML = `
-        <button class="btn btn-sm btn-primary" onclick="saveEdit(${messageId})">
+        <button class="btn btn-sm btn-success" onclick="saveEdit('${messageId}', event)" style="margin-right: 5px;">
             <i class="bi bi-check-lg"></i> Enregistrer
         </button>
-        <button class="btn btn-sm btn-secondary" onclick="cancelEdit(${messageId}, '${escapeHtml(originalContent)}')">
+        <button class="btn btn-sm btn-secondary" onclick="cancelEdit('${messageId}', event)">
             <i class="bi bi-x-lg"></i> Annuler
         </button>
     `;
     
     footer.appendChild(actionsDiv);
     
-    // Empêcher la perte du focus
-    contentDiv.addEventListener('blur', function(e) {
-        // Ne pas perdre le focus si on clique sur les boutons
-        if (e.relatedTarget && e.relatedTarget.closest(`#edit-actions-${messageId}`)) {
+    // IMPORTANT: Focus avec délai plus long et placement du curseur à la fin
+    setTimeout(() => {
+        contentDiv.focus();
+        
+        // Placer le curseur à la fin du texte
+        const range = document.createRange();
+        const sel = window.getSelection();
+        
+        // Sélectionner tout le contenu
+        range.selectNodeContents(contentDiv);
+        // Collapse à la fin (false = fin)
+        range.collapse(false);
+        
+        sel.removeAllRanges();
+        sel.addRange(range);
+        
+        console.log('✅ Focus placé, curseur à la fin');
+    }, 150);
+    
+    // Empêcher la perte du focus et permettre les raccourcis clavier
+    contentDiv.addEventListener('keydown', function(e) {
+        // Ctrl+Enter pour sauvegarder
+        if (e.key === 'Enter' && e.ctrlKey) {
             e.preventDefault();
+            saveEdit(messageId, e);
+        }
+        // Escape pour annuler
+        else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelEdit(messageId, e);
+        }
+    });
+    
+    // Empêcher la perte du focus lors du clic sur les boutons
+    contentDiv.addEventListener('blur', function(e) {
+        if (e.relatedTarget && e.relatedTarget.closest(`#edit-actions-${messageId}`)) {
             setTimeout(() => contentDiv.focus(), 0);
         }
-    }, { once: true });
+    });
 }
 
-function saveEdit(messageId) {
+function saveEdit(messageId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    console.log('💾 Sauvegarde du message:', messageId);
+    
     const messageDiv = document.querySelector(`.message[data-message-id="${messageId}"]`);
     if (!messageDiv) return;
     
@@ -355,6 +405,7 @@ function saveEdit(messageId) {
     if (!contentDiv) return;
     
     const newContent = contentDiv.textContent.trim();
+    const originalContent = contentDiv.dataset.originalContent;
     
     if (!newContent) {
         alert('Le message ne peut pas être vide');
@@ -362,7 +413,13 @@ function saveEdit(messageId) {
         return;
     }
     
-    console.log('✏️ Modification du message:', messageId);
+    if (newContent === originalContent) {
+        console.log('⚠️ Aucune modification');
+        cancelEdit(messageId, event);
+        return;
+    }
+    
+    console.log('✏️ Modification du message:', messageId, 'Nouveau:', newContent);
     
     // Envoyer via WebSocket
     chatSocket.send(JSON.stringify({
@@ -373,8 +430,9 @@ function saveEdit(messageId) {
     
     // Nettoyer l'interface
     contentDiv.contentEditable = false;
-    contentDiv.style.cursor = '';
+    contentDiv.style.cssText = '';
     messageDiv.classList.remove('edit-mode');
+    delete contentDiv.dataset.originalContent;
     
     const actionsDiv = document.getElementById(`edit-actions-${messageId}`);
     if (actionsDiv) actionsDiv.remove();
@@ -384,7 +442,14 @@ function saveEdit(messageId) {
     if (messageActions) messageActions.style.display = '';
 }
 
-function cancelEdit(messageId, originalContent) {
+function cancelEdit(messageId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    console.log('❌ Annulation de l\'édition:', messageId);
+    
     const messageDiv = document.querySelector(`.message[data-message-id="${messageId}"]`);
     if (!messageDiv) return;
     
@@ -392,9 +457,14 @@ function cancelEdit(messageId, originalContent) {
     if (!contentDiv) return;
     
     // Restaurer le contenu original
-    contentDiv.textContent = originalContent;
+    const originalContent = contentDiv.dataset.originalContent;
+    if (originalContent !== undefined) {
+        contentDiv.textContent = originalContent;
+        delete contentDiv.dataset.originalContent;
+    }
+    
     contentDiv.contentEditable = false;
-    contentDiv.style.cursor = '';
+    contentDiv.style.cssText = '';
     messageDiv.classList.remove('edit-mode');
     
     // Supprimer les boutons d'édition
@@ -404,6 +474,8 @@ function cancelEdit(messageId, originalContent) {
     // Réafficher le menu d'actions
     const messageActions = messageDiv.querySelector('.message-actions');
     if (messageActions) messageActions.style.display = '';
+    
+    console.log('✅ Édition annulée');
 }
 
 function handleMessageDeleted(messageId, deletedText) {

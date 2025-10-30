@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'django_otp.plugins.otp_static',
     'Learner',  # Our learner app
     'chat',  # App de chat en temps réel
+    'meetings',  # App de visioconférence
 ]
 
 MIDDLEWARE = [
@@ -101,7 +102,7 @@ DATABASES = {
 # MongoDB Configuration (use pymongo directly in your views/models)
 MONGODB_SETTINGS = {
     'host': os.environ.get('MONGO_URI', 'mongodb://localhost:27017/'),
-    'db_name': os.environ.get('MONGO_DB_NAME', 'smartcampus'),
+    'db_name': 'smartcampus_db',  # ✅ Base de données MongoDB correcte
 }
 
 

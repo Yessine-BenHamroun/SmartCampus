@@ -1,8 +1,9 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from django.utils import timezone
-from .models import ChatRoom, ChatMessage, ChatParticipant
+from datetime import datetime
+from .mongo_models import ChatRoomMongo, ChatMessageMongo, ChatParticipantMongo
+from bson import ObjectId
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -235,69 +236,117 @@ class ChatConsumer(AsyncWebsocketConsumer):
     
     @database_sync_to_async
     def save_message(self, content):
-        """Sauvegarder le message dans la base de données"""
+        """Sauvegarder le message dans MongoDB"""
         try:
-            room = ChatRoom.objects.get(slug=self.room_slug)
-            message = ChatMessage.objects.create(
-                room=room,
-                sender=self.user,
+            room = ChatRoomMongo.get_by_slug(self.room_slug)
+            if not room:
+                print(f"❌ Room {self.room_slug} does not exist")
+                return {'id': None, 'timestamp': datetime.utcnow().isoformat()}
+            
+            room_id = str(room['_id'])
+            display_name = f"{self.user.first_name} {self.user.last_name}".strip() or self.user.username
+            
+            message = ChatMessageMongo.create(
+                room_id=room_id,
+                sender_id=self.user.id,
+                sender_email=self.user.email,
+                sender_name=display_name,
                 content=content
             )
+            
             return {
-                'id': message.id,
-                'timestamp': message.timestamp.isoformat()
+                'id': str(message['_id']),
+                'timestamp': message['timestamp'].isoformat() if message.get('timestamp') else datetime.utcnow().isoformat()
             }
-        except ChatRoom.DoesNotExist:
-            print(f"❌ Room {self.room_slug} does not exist")
-            return {'id': None, 'timestamp': timezone.now().isoformat()}
+        except Exception as e:
+            print(f"❌ Error saving message: {e}")
+            return {'id': None, 'timestamp': datetime.utcnow().isoformat()}
     
     @database_sync_to_async
     def set_user_online(self, is_online):
-        """Mettre à jour le statut en ligne de l'utilisateur"""
+        """Mettre à jour le statut en ligne de l'utilisateur - MongoDB"""
         try:
-            room = ChatRoom.objects.get(slug=self.room_slug)
-            participant, created = ChatParticipant.objects.get_or_create(
-                room=room,
-                user=self.user
+            room = ChatRoomMongo.get_by_slug(self.room_slug)
+            if not room:
+                print(f"❌ Room {self.room_slug} does not exist")
+                return
+            
+            room_id = str(room['_id'])
+            display_name = f"{self.user.first_name} {self.user.last_name}".strip() or self.user.username
+            
+            # Créer ou récupérer le participant
+            ChatParticipantMongo.get_or_create(
+                room_id=room_id,
+                user_id=self.user.id,
+                user_email=self.user.email,
+                user_name=display_name
             )
-            participant.is_online = is_online
-            participant.last_seen = timezone.now()
+            
+            # Mettre à jour le statut en ligne
+            ChatParticipantMongo.set_online(room_id, self.user.id, is_online)
+            
+            # Mettre à jour last_seen
+            ChatParticipantMongo.update_last_seen(room_id, self.user.id)
+            
+            # Réinitialiser le compteur si hors ligne
             if not is_online:
-                participant.unread_count = 0
-            participant.save()
-        except ChatRoom.DoesNotExist:
-            print(f"❌ Room {self.room_slug} does not exist")
+                ChatParticipantMongo.reset_unread_count(room_id, self.user.id)
+        except Exception as e:
+            print(f"❌ Error setting user online status: {e}")
     
     @database_sync_to_async
     def delete_message(self, message_id):
-        """Supprimer un message (soft delete)"""
+        """Supprimer un message (soft delete) - MongoDB"""
         try:
-            message = ChatMessage.objects.get(id=message_id, sender=self.user)
-            if not message.is_deleted:
-                message.soft_delete()
-                return True
-            return False
-        except ChatMessage.DoesNotExist:
-            print(f"❌ Message {message_id} does not exist or user is not sender")
+            obj_id = ObjectId(message_id)
+            message = ChatMessageMongo.get_by_id(obj_id)
+            
+            if not message:
+                print(f"❌ Message {message_id} does not exist")
+                return False
+            
+            # Vérifier que l'utilisateur est l'expéditeur
+            if message.get('sender_id') != self.user.id:
+                print(f"❌ User {self.user.id} is not the sender of message {message_id}")
+                return False
+            
+            # Vérifier que le message n'est pas déjà supprimé
+            if message.get('is_deleted', False):
+                return False
+            
+            display_name = f"{self.user.first_name} {self.user.last_name}".strip() or self.user.username
+            ChatMessageMongo.soft_delete(obj_id, self.user.id, display_name)
+            return True
+        except Exception as e:
+            print(f"❌ Error deleting message: {e}")
             return False
     
     @database_sync_to_async
     def edit_message(self, message_id, new_content):
-        """Modifier un message"""
+        """Modifier un message - MongoDB"""
         try:
-            message = ChatMessage.objects.get(id=message_id, sender=self.user)
-            if message.is_deleted:
+            obj_id = ObjectId(message_id)
+            message = ChatMessageMongo.get_by_id(obj_id)
+            
+            if not message:
+                print(f"❌ Message {message_id} does not exist")
+                return {'success': False, 'error': 'Message introuvable'}
+            
+            # Vérifier que l'utilisateur est l'expéditeur
+            if message.get('sender_id') != self.user.id:
+                print(f"❌ User {self.user.id} is not the sender of message {message_id}")
+                return {'success': False, 'error': 'Non autorisé'}
+            
+            if message.get('is_deleted', False):
                 return {'success': False, 'error': 'Message supprimé'}
             
-            message.content = new_content
-            message.is_edited = True
-            message.edited_at = timezone.now()
-            message.save()
+            # Mettre à jour le message
+            ChatMessageMongo.edit_message(obj_id, new_content)
             
             return {
                 'success': True,
-                'edited_at': message.edited_at.isoformat()
+                'edited_at': datetime.utcnow().isoformat()
             }
-        except ChatMessage.DoesNotExist:
-            print(f"❌ Message {message_id} does not exist or user is not sender")
-            return {'success': False, 'error': 'Message introuvable'}
+        except Exception as e:
+            print(f"❌ Error editing message: {e}")
+            return {'success': False, 'error': str(e)}

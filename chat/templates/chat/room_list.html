@@ -81,9 +81,9 @@
                                     <p class="card-text text-muted">{{ room.description|truncatewords:15 }}</p>
                                     <div class="d-flex justify-content-between align-items-center mt-3">
                                         <span class="online-badge">
-                                            <i class="bi bi-people-fill"></i> {{ room.get_online_count }} en ligne
+                                            <i class="bi bi-people-fill"></i> En ligne
                                         </span>
-                                        <small class="text-muted">{{ room.participants.count }} membres</small>
+                                        <small class="text-muted">{{ room.participant_ids|length }} membres</small>
                                     </div>
                                 </div>
                             </div>
@@ -110,9 +110,9 @@
                                     <h5 class="card-title mt-3">{{ room.name }}</h5>
                                     <p class="card-text text-muted">{{ room.description|truncatewords:15 }}</p>
                                     <div class="d-flex justify-content-between align-items-center mt-3">
-                                        <span class="badge bg-secondary">{{ room.get_room_type_display }}</span>
+                                        <span class="badge bg-secondary">{{ room.room_type }}</span>
                                         <span class="online-badge">
-                                            <i class="bi bi-people-fill"></i> {{ room.get_online_count }} en ligne
+                                            <i class="bi bi-people-fill"></i> En ligne
                                         </span>
                                     </div>
                                 </div>

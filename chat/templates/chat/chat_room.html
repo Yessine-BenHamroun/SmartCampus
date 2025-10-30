@@ -470,30 +470,20 @@
                     <!-- Messages -->
                     <div class="chat-messages" id="chat-messages">
                         {% for message in messages %}
-                        <div class="{% if message.sender == user %}message-wrapper-own{% else %}message-wrapper-other{% endif %}">
-                            <div class="message {% if message.sender == user %}message-own{% else %}message-other{% endif %} {% if message.is_deleted %}message-deleted{% endif %}" 
+                        <div class="{% if message.sender_id == user.id %}message-wrapper-own{% else %}message-wrapper-other{% endif %}">
+                            <div class="message {% if message.sender_id == user.id %}message-own{% else %}message-other{% endif %} {% if message.is_deleted %}message-deleted{% endif %}" 
                                  data-message-id="{{ message.id }}"
-                                 data-sender-id="{{ message.sender.id }}">
+                                 data-sender-id="{{ message.sender_id }}">
                                 {% if message.is_deleted %}
                                     <div class="message-content deleted-content">
                                         <i class="bi bi-trash"></i>
-                                        {% if message.sender.first_name or message.sender.last_name %}
-                                            {{ message.sender.first_name }} {{ message.sender.last_name }}
-                                        {% else %}
-                                            {{ message.sender.username }}
-                                        {% endif %}
+                                        {{ message.deleted_by_name|default:message.sender_name }}
                                         a supprimé ce message
                                     </div>
                                     <div class="message-time">{{ message.timestamp|date:'H:i' }}</div>
                                 {% else %}
                                     <div class="message-header">
-                                        <strong>
-                                            {% if message.sender.first_name or message.sender.last_name %}
-                                                {{ message.sender.first_name }} {{ message.sender.last_name }}
-                                            {% else %}
-                                                {{ message.sender.username }}
-                                            {% endif %}
-                                        </strong>
+                                        <strong>{{ message.sender_name }}</strong>
                                     </div>
                                     <div class="message-content" id="content-{{ message.id }}">{{ message.content }}</div>
                                     <div class="message-footer">
@@ -503,17 +493,17 @@
                                             <span class="edited-label">(modifié)</span>
                                             {% endif %}
                                         </div>
-                                        {% if message.sender == user %}
+                                        {% if message.sender_id == user.id %}
                                         <div class="message-actions">
                                             <div class="message-menu">
-                                                <button class="message-menu-btn" onclick="toggleMenu({{ message.id }}, event)" title="Options">
+                                                <button class="message-menu-btn" onclick="toggleMenu('{{ message.id }}', event)" title="Options">
                                                     <i class="bi bi-three-dots-vertical"></i>
                                                 </button>
                                                 <div class="message-dropdown" id="menu-{{ message.id }}">
-                                                    <button class="dropdown-item edit-item" onclick="editMessage({{ message.id }}, event)">
+                                                    <button class="dropdown-item edit-item" onclick="editMessage('{{ message.id }}', event)">
                                                         <i class="bi bi-pencil"></i> Modifier
                                                     </button>
-                                                    <button class="dropdown-item delete-item" onclick="deleteMessage({{ message.id }}, event)">
+                                                    <button class="dropdown-item delete-item" onclick="deleteMessage('{{ message.id }}', event)">
                                                         <i class="bi bi-trash"></i> Supprimer
                                                     </button>
                                                 </div>
@@ -567,11 +557,20 @@
         
         // Fonction pour toggle le menu déroulant
         function toggleMenu(messageId, event) {
+            console.log('🔧 toggleMenu called with messageId:', messageId);
             event.preventDefault();
             event.stopPropagation();
             
             const menu = document.getElementById(`menu-${messageId}`);
+            console.log('📋 Menu element:', menu);
+            
+            if (!menu) {
+                console.error('❌ Menu not found for messageId:', messageId);
+                return;
+            }
+            
             const allMenus = document.querySelectorAll('.message-dropdown');
+            console.log('📋 All menus:', allMenus.length);
             
             // Fermer tous les autres menus
             allMenus.forEach(m => {
@@ -582,6 +581,7 @@
             
             // Toggle le menu actuel
             menu.classList.toggle('show');
+            console.log('✅ Menu toggled, now visible:', menu.classList.contains('show'));
         }
         
         // Fermer les menus au clic ailleurs

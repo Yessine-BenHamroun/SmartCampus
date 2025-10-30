@@ -25,5 +25,7 @@ urlpatterns = [
     path('api/users/', include('users.urls')),
     path('api/courses/', include('courses.urls')),
     path('api/blog/', include('blog.urls')),
+    path('api/chat/', include('chat.urls')),
+    path('api/meetings/', include('meetings.urls')),  # Meetings API
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]

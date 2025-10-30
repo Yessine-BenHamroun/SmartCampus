@@ -1,0 +1,226 @@
+{% extends 'meetings/base.html' %}
+
+{% block title %}Mes Invitations{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-5">
+            <i class="bi bi-calendar-check"></i> Mes Invitations aux Réunions
+        </h1>
+    </div>
+</div>
+
+<!-- Statistiques -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card stats-card text-white bg-primary">
+            <div class="card-body text-center">
+                <div class="stats-number">{{ total_invited }}</div>
+                <div>Total des invitations</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card stats-card text-white bg-success">
+            <div class="card-body text-center">
+                <div class="stats-number">{{ upcoming_count }}</div>
+                <div>Réunions à venir</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Onglets -->
+<ul class="nav nav-tabs mb-4" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#upcoming" type="button">
+            <i class="bi bi-calendar-plus"></i> À venir ({{ upcoming_count }})
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#past" type="button">
+            <i class="bi bi-calendar-check"></i> Passées ({{ past_participants|length }})
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- Réunions à venir -->
+    <div class="tab-pane fade show active" id="upcoming">
+        {% if upcoming_participants %}
+            <div class="row">
+                {% for participant in upcoming_participants %}
+                    {% with meeting=participant.meeting %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 
+                                {% if meeting.status == 'ongoing' %}border-danger{% endif %}">
+                                
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <span class="status-badge status-{{ meeting.status }}">
+                                        {% if meeting.status == 'scheduled' %}
+                                            <i class="bi bi-clock"></i> Planifiée
+                                        {% elif meeting.status == 'ongoing' %}
+                                            <i class="bi bi-broadcast"></i> En cours
+                                        {% elif meeting.status == 'cancelled' %}
+                                            <i class="bi bi-x-circle"></i> Annulée
+                                        {% endif %}
+                                    </span>
+                                    
+                                    {% if participant.status == 'invited' %}
+                                        <span class="badge bg-warning">
+                                            <i class="bi bi-exclamation-circle"></i> En attente
+                                        </span>
+                                    {% elif participant.status == 'accepted' %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle"></i> Acceptée
+                                        </span>
+                                    {% elif participant.status == 'declined' %}
+                                        <span class="badge bg-danger">
+                                            <i class="bi bi-x-circle"></i> Refusée
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ meeting.title }}</h5>
+                                    <p class="card-text text-muted">
+                                        {{ meeting.description|truncatewords:12 }}
+                                    </p>
+                                    
+                                    <div class="mb-2">
+                                        <i class="bi bi-person text-primary"></i>
+                                        <strong>{{ meeting.instructor.get_full_name|default:meeting.instructor.username }}</strong>
+                                    </div>
+                                    
+                                    <div class="mb-2">
+                                        <i class="bi bi-calendar-event text-primary"></i>
+                                        <strong>{{ meeting.scheduled_date|date:"d/m/Y à H:i" }}</strong>
+                                    </div>
+                                    
+                                    <div class="mb-2">
+                                        <i class="bi bi-clock text-primary"></i>
+                                        {{ meeting.duration }} minutes
+                                    </div>
+                                    
+                                    {% if meeting.status == 'ongoing' %}
+                                        <div class="alert alert-danger mt-3" role="alert">
+                                            <i class="bi bi-broadcast"></i> En cours maintenant !
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="card-footer bg-white">
+                                    <div class="d-flex justify-content-between gap-2">
+                                        <a href="{% url 'meeting_detail' meeting.pk %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i> Détails
+                                        </a>
+                                        
+                                        {% if meeting.status == 'ongoing' and meeting.can_join %}
+                                            <a href="{% url 'meeting_join' meeting.pk %}" 
+                                               class="btn btn-sm btn-danger">
+                                                <i class="bi bi-camera-video"></i> Rejoindre
+                                            </a>
+                                        {% elif meeting.status == 'scheduled' %}
+                                            {% if participant.status == 'invited' %}
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="{% url 'meeting_respond' meeting.pk 'accept' %}" 
+                                                       class="btn btn-success" title="Accepter">
+                                                        <i class="bi bi-check"></i>
+                                                    </a>
+                                                    <a href="{% url 'meeting_respond' meeting.pk 'decline' %}" 
+                                                       class="btn btn-danger" title="Refuser">
+                                                        <i class="bi bi-x"></i>
+                                                    </a>
+                                                </div>
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endwith %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info text-center">
+                <i class="bi bi-calendar-x fs-1 d-block mb-3"></i>
+                <h4>Aucune réunion à venir</h4>
+                <p>Vous n'avez pas de réunion planifiée pour le moment.</p>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Réunions passées -->
+    <div class="tab-pane fade" id="past">
+        {% if past_participants %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Titre</th>
+                            <th>Instructeur</th>
+                            <th>Date</th>
+                            <th>Statut</th>
+                            <th>Participation</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for participant in past_participants %}
+                            {% with meeting=participant.meeting %}
+                                <tr>
+                                    <td><strong>{{ meeting.title }}</strong></td>
+                                    <td>{{ meeting.instructor.get_full_name|default:meeting.instructor.username }}</td>
+                                    <td>{{ meeting.scheduled_date|date:"d/m/Y H:i" }}</td>
+                                    <td>
+                                        <span class="status-badge status-{{ meeting.status }}">
+                                            {% if meeting.status == 'completed' %}
+                                                <i class="bi bi-check-circle"></i> Terminée
+                                            {% else %}
+                                                <i class="bi bi-x-circle"></i> Annulée
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if participant.status == 'attended' %}
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-check"></i> Présent
+                                            </span>
+                                            {% if participant.duration %}
+                                                <small class="text-muted">({{ participant.duration }} min)</small>
+                                            {% endif %}
+                                        {% elif participant.status == 'absent' %}
+                                            <span class="badge bg-danger">
+                                                <i class="bi bi-x"></i> Absent
+                                            </span>
+                                        {% elif participant.status == 'declined' %}
+                                            <span class="badge bg-secondary">Refusée</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Non répondu</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'meeting_detail' meeting.pk %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i> Voir
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endwith %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info text-center">
+                <i class="bi bi-calendar-x fs-1 d-block mb-3"></i>
+                <h4>Aucune réunion passée</h4>
+                <p>Vous n'avez participé à aucune réunion.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

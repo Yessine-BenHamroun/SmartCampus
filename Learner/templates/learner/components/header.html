@@ -24,6 +24,7 @@
               <li><a href="{% url 'my_progress' %}"><i class="bi bi-graph-up"></i> My Progress</a></li>
               <li><a href="{% url 'my_submissions' %}"><i class="bi bi-file-earmark-check"></i> Submissions</a></li>
               <li><a href="{% url 'discussions' %}"><i class="bi bi-chat-dots"></i> Discussions</a></li>
+              <li><a href="{% url 'student_meetings' %}"><i class="bi bi-calendar-check"></i> My Meetings</a></li>
             </ul>
           </li>
           {% endif %}
@@ -36,6 +37,7 @@
               <li><a href="{% url 'instructor_courses' %}"><i class="bi bi-book"></i> My Courses</a></li>
               <li><a href="{% url 'instructor_submissions' %}"><i class="bi bi-file-earmark-text"></i> Submissions</a></li>
               <li><a href="{% url 'course_analytics' %}"><i class="bi bi-bar-chart"></i> Analytics</a></li>
+              <li><a href="{% url 'meeting_list' %}"><i class="bi bi-camera-video-fill"></i> My Meetings</a></li>
             </ul>
           </li>
           {% endif %}
@@ -43,7 +45,15 @@
         
         {% if user.is_authenticated %}
         <li><a href="{% url 'chat:room_list' %}" class="{% if 'chat' in request.path %}active{% endif %}"><i class="bi bi-chat-dots-fill"></i> Chat</a></li>
+        
+        <!-- Meetings Link -->
+        {% if user.is_staff %}
+          <li><a href="{% url 'meeting_list' %}" class="{% if 'meetings' in request.path %}active{% endif %}"><i class="bi bi-camera-video-fill"></i> Réunions</a></li>
+        {% else %}
+          <li><a href="{% url 'student_meetings' %}" class="{% if 'meetings' in request.path %}active{% endif %}"><i class="bi bi-calendar-check"></i> Réunions</a></li>
         {% endif %}
+        {% endif %}
+        
         <li><a href="{% url 'pricing' %}" class="{% if request.resolver_match.url_name == 'pricing' %}active{% endif %}">Pricing</a></li>
         <li><a href="{% url 'blog' %}" class="{% if request.resolver_match.url_name == 'blog' %}active{% endif %}">Blog</a></li>
         <li class="dropdown"><a href="#"><span>More</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
@@ -68,6 +78,14 @@
         <li><a class="dropdown-item" href="{% url 'edit_profile' %}"><i class="bi bi-gear"></i> Edit Profile</a></li>
         <li><a class="dropdown-item" href="{% url 'courses' %}"><i class="bi bi-book"></i> My Courses</a></li>
         <li><a class="dropdown-item" href="{% url 'chat:room_list' %}"><i class="bi bi-chat-dots-fill"></i> Chat Rooms</a></li>
+        
+        <!-- Meetings Link -->
+        {% if user.is_staff %}
+          <li><a class="dropdown-item" href="{% url 'meeting_list' %}"><i class="bi bi-camera-video-fill"></i> Mes Réunions</a></li>
+        {% else %}
+          <li><a class="dropdown-item" href="{% url 'student_meetings' %}"><i class="bi bi-calendar-check"></i> Mes Invitations</a></li>
+        {% endif %}
+        
         <li><hr class="dropdown-divider"></li>
         <li><a class="dropdown-item" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
       </ul>

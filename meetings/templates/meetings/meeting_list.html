@@ -1,0 +1,151 @@
+{% extends 'meetings/base.html' %}
+
+{% block title %}Mes Réunions{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="display-5"><i class="bi bi-calendar3"></i> Mes Réunions</h1>
+            <a href="{% url 'meeting_create' %}" class="btn btn-primary btn-lg">
+                <i class="bi bi-plus-circle"></i> Créer une Réunion
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Statistiques -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card stats-card text-white bg-primary">
+            <div class="card-body text-center">
+                <div class="stats-number">{{ total_meetings }}</div>
+                <div>Total des réunions</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stats-card text-white bg-success">
+            <div class="card-body text-center">
+                <div class="stats-number">{{ upcoming_meetings }}</div>
+                <div>À venir</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stats-card text-white bg-danger">
+            <div class="card-body text-center">
+                <div class="stats-number">{{ ongoing_meetings }}</div>
+                <div>En cours</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtres -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label"><i class="bi bi-funnel"></i> Statut</label>
+                {{ filter_form.status }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label"><i class="bi bi-calendar-range"></i> Période</label>
+                {{ filter_form.time_filter }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label"><i class="bi bi-search"></i> Recherche</label>
+                <div class="input-group">
+                    {{ filter_form.search }}
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Liste des réunions -->
+{% if meetings %}
+    <div class="row">
+        {% for meeting in meetings %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span class="status-badge status-{{ meeting.status }}">
+                            {% if meeting.status == 'scheduled' %}
+                                <i class="bi bi-clock"></i> Planifiée
+                            {% elif meeting.status == 'ongoing' %}
+                                <i class="bi bi-broadcast"></i> En cours
+                            {% elif meeting.status == 'completed' %}
+                                <i class="bi bi-check-circle"></i> Terminée
+                            {% else %}
+                                <i class="bi bi-x-circle"></i> Annulée
+                            {% endif %}
+                        </span>
+                        <small class="text-muted">{{ meeting.duration }} min</small>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">{{ meeting.title }}</h5>
+                        <p class="card-text text-muted">
+                            {{ meeting.description|truncatewords:15 }}
+                        </p>
+                        
+                        <div class="mb-2">
+                            <i class="bi bi-calendar-event text-primary"></i>
+                            <strong>{{ meeting.scheduled_date|date:"d/m/Y à H:i" }}</strong>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <i class="bi bi-people text-success"></i>
+                            {{ meeting.total_participants }} participant(s)
+                            {% if meeting.attended_participants > 0 %}
+                                <span class="badge bg-success">{{ meeting.attended_participants }} présent(s)</span>
+                            {% endif %}
+                        </div>
+                        
+                        {% if meeting.status == 'ongoing' %}
+                            <div class="alert alert-danger mb-2" role="alert">
+                                <i class="bi bi-broadcast"></i> Réunion en cours !
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer bg-white">
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'meeting_detail' meeting.pk %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> Détails
+                            </a>
+                            
+                            {% if meeting.status == 'scheduled' and meeting.can_start %}
+                                <a href="{% url 'meeting_start' meeting.pk %}" class="btn btn-sm btn-success">
+                                    <i class="bi bi-play-circle"></i> Démarrer
+                                </a>
+                            {% elif meeting.status == 'ongoing' %}
+                                <a href="{% url 'meeting_room' meeting.pk %}" class="btn btn-sm btn-danger">
+                                    <i class="bi bi-camera-video"></i> Rejoindre
+                                </a>
+                            {% elif meeting.status == 'scheduled' %}
+                                <a href="{% url 'meeting_update' meeting.pk %}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-pencil"></i> Modifier
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info text-center" role="alert">
+        <i class="bi bi-info-circle fs-1 d-block mb-3"></i>
+        <h4>Aucune réunion trouvée</h4>
+        <p>Vous n'avez pas encore créé de réunion.</p>
+        <a href="{% url 'meeting_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Créer votre première réunion
+        </a>
+    </div>
+{% endif %}
+
+{% endblock %}

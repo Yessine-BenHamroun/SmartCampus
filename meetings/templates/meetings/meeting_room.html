@@ -1,0 +1,260 @@
+{% extends 'meetings/base.html' %}
+
+{% block title %}{{ meeting.title }} - Salle de réunion{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+    
+    .meeting-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        background: #1a1a1a;
+    }
+    
+    .meeting-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,.3);
+    }
+    
+    .meeting-info h4 {
+        margin: 0;
+        font-size: 1.2rem;
+    }
+    
+    .meeting-info p {
+        margin: 5px 0 0 0;
+        opacity: 0.9;
+        font-size: 0.9rem;
+    }
+    
+    .meeting-actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    #meet {
+        flex: 1;
+        width: 100%;
+        height: 100%;
+    }
+    
+    .btn-leave {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border: none;
+        color: white;
+        padding: 10px 25px;
+        border-radius: 50px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-leave:hover {
+        transform: scale(1.05);
+        box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+    }
+    
+    .loading-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: calc(100vh - 80px);
+        color: white;
+    }
+    
+    .spinner {
+        width: 60px;
+        height: 60px;
+        border: 5px solid rgba(255,255,255,.2);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="meeting-container">
+    <!-- Header -->
+    <div class="meeting-header">
+        <div class="meeting-info">
+            <h4>
+                <i class="bi bi-camera-video-fill"></i>
+                {{ meeting.title }}
+            </h4>
+            <p>
+                <i class="bi bi-person"></i>
+                Organisé par {{ meeting.instructor.get_full_name|default:meeting.instructor.username }}
+                •
+                <i class="bi bi-clock"></i>
+                {{ meeting.duration }} minutes
+            </p>
+        </div>
+        
+        <div class="meeting-actions">
+            {% if is_instructor %}
+                <form method="post" action="{% url 'meeting_end' meeting.pk %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-leave" 
+                            onclick="return confirm('Êtes-vous sûr de vouloir terminer la réunion pour tous les participants ?')">
+                        <i class="bi bi-stop-circle-fill"></i> Terminer la réunion
+                    </button>
+                </form>
+            {% else %}
+                <a href="{% url 'meeting_leave' meeting.pk %}" class="btn btn-leave">
+                    <i class="bi bi-box-arrow-right"></i> Quitter
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Jitsi Meet Container -->
+    <div id="meet">
+        <div class="loading-container">
+            <div class="spinner mb-4"></div>
+            <h3>Connexion à la réunion...</h3>
+            <p>Veuillez patienter quelques instants</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Jitsi Meet External API -->
+<script src='https://meet.jit.si/external_api.js'></script>
+
+<script>
+// Configuration Jitsi Meet
+const domain = 'meet.jit.si';
+const options = {
+    roomName: '{{ meeting.meeting_id }}',
+    width: '100%',
+    height: '100%',
+    parentNode: document.querySelector('#meet'),
+    
+    // Informations utilisateur
+    userInfo: {
+        displayName: '{{ user_display_name }}',
+        email: '{{ user.email|default:"" }}'
+    },
+    
+    // Configuration de l'interface
+    configOverwrite: {
+        startWithAudioMuted: false,
+        startWithVideoMuted: false,
+        enableWelcomePage: false,
+        prejoinPageEnabled: true,  // Page de préparation avant de rejoindre
+        disableDeepLinking: true,
+        
+        // Fonctionnalités
+        enableClosePage: false,
+        enableNoisyMicDetection: true,
+        
+        // Toolbar buttons
+        toolbarButtons: [
+            'microphone',
+            'camera',
+            'desktop',  // Partage d'écran
+            'fullscreen',
+            'fodeviceselection',
+            'hangup',
+            'profile',
+            'chat',
+            'recording',
+            'livestreaming',
+            'etherpad',
+            'sharedvideo',
+            'settings',
+            'raisehand',
+            'videoquality',
+            'filmstrip',
+            'feedback',
+            'stats',
+            'shortcuts',
+            'tileview',
+            'videobackgroundblur',
+            'download',
+            'help',
+            'mute-everyone',
+            {% if is_instructor %}
+            'security',  // Paramètres de sécurité (uniquement instructeur)
+            {% endif %}
+        ],
+    },
+    
+    // Interface overrides
+    interfaceConfigOverwrite: {
+        SHOW_JITSI_WATERMARK: false,
+        SHOW_WATERMARK_FOR_GUESTS: false,
+        DEFAULT_BACKGROUND: '#1a1a1a',
+        DISABLE_JOIN_LEAVE_NOTIFICATIONS: false,
+        HIDE_INVITE_MORE_HEADER: false,
+        MOBILE_APP_PROMO: false,
+        
+        // Logo personnalisé
+        DEFAULT_LOGO_URL: '',
+        DEFAULT_WELCOME_PAGE_LOGO_URL: '',
+    },
+};
+
+// Initialiser Jitsi
+const api = new JitsiMeetExternalAPI(domain, options);
+
+// Événements
+api.addEventListener('videoConferenceJoined', () => {
+    console.log('Réunion rejointe avec succès');
+    
+    {% if is_instructor %}
+    // L'instructeur est le modérateur
+    api.executeCommand('toggleLobby', false);  // Désactiver la salle d'attente
+    {% endif %}
+});
+
+api.addEventListener('videoConferenceLeft', () => {
+    console.log('Vous avez quitté la réunion');
+    // Rediriger vers la page de détails
+    window.location.href = "{% url 'meeting_detail' meeting.pk %}";
+});
+
+api.addEventListener('participantJoined', (participant) => {
+    console.log('Participant rejoint:', participant.displayName);
+});
+
+api.addEventListener('participantLeft', (participant) => {
+    console.log('Participant parti:', participant.displayName);
+});
+
+// Gestion de la fermeture de la page
+window.addEventListener('beforeunload', (e) => {
+    // Enregistrer l'heure de départ
+    fetch("{% url 'meeting_leave' meeting.pk %}", {
+        method: 'GET',
+        keepalive: true
+    });
+});
+
+// Fullscreen sur mobile
+if (window.matchMedia('(max-width: 768px)').matches) {
+    api.executeCommand('toggleFullScreen');
+}
+</script>
+{% endblock %}
