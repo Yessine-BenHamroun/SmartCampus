@@ -1,0 +1,149 @@
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}My Certification Progress - SmartCampus{% endblock %}
+
+{% block body_class %}my-certification-progress-page{% endblock %}
+
+{% block content %}
+<main id="main">
+  <!-- Breadcrumbs -->
+  <div class="breadcrumbs">
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-center">
+        <h2>My Certification Progress</h2>
+        <ol>
+          <li><a href="{% url 'index' %}">Home</a></li>
+          <li><a href="{% url 'my_learning' %}">My Learning</a></li>
+          <li>Certification Progress</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress Section -->
+  <section class="progress-section py-5">
+    <div class="container">
+      <div class="row mb-4">
+        <div class="col-md-12">
+          <div class="d-flex justify-content-between align-items-center">
+            <h3><i class="bi bi-trophy"></i> My Certifications</h3>
+            <a href="{% url 'my_badges' %}" class="btn btn-success">
+              <i class="bi bi-award"></i> View My Badges
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {% if progress_list %}
+      <div class="row">
+        {% for prog in progress_list %}
+        <div class="col-md-6 col-lg-4 mb-4">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body">
+              <div class="text-center mb-3">
+                {% if prog.certification.badge_image %}
+                <img src="{{ prog.certification.badge_image }}" alt="{{ prog.certification.title }}" class="img-fluid rounded" style="max-height: 100px;">
+                {% else %}
+                <i class="bi bi-award-fill text-primary" style="font-size: 3rem;"></i>
+                {% endif %}
+              </div>
+              
+              <h5 class="card-title text-center">{{ prog.certification.title|default:"Certification" }}</h5>
+              
+              <!-- Progress Bar -->
+              <div class="progress mb-3" style="height: 20px;">
+                {% widthratio prog.current_step prog.certification.total_steps 100 as progress_percent %}
+                <div class="progress-bar {% if prog.status == 'completed' %}bg-success{% elif prog.status == 'failed' %}bg-danger{% else %}bg-primary{% endif %}" 
+                     role="progressbar" 
+                     style="width: {{ progress_percent }}%;">
+                  {{ prog.current_step }}/{{ prog.certification.total_steps }}
+                </div>
+              </div>
+              
+              <!-- Status Badge -->
+              <div class="text-center mb-3">
+                <span class="badge {% if prog.status == 'completed' %}bg-success{% elif prog.status == 'in_progress' %}bg-primary{% elif prog.status == 'failed' %}bg-danger{% else %}bg-secondary{% endif %} badge-lg">
+                  {{ prog.status|title }}
+                </span>
+              </div>
+              
+              <!-- Stats -->
+              <div class="cert-stats mb-3">
+                <div class="d-flex justify-content-between mb-2">
+                  <small class="text-muted">Exam Attempts:</small>
+                  <small><strong>{{ prog.exam_attempts|default:0 }}/3</strong></small>
+                </div>
+                {% if prog.exam_score %}
+                <div class="d-flex justify-content-between mb-2">
+                  <small class="text-muted">Best Score:</small>
+                  <small><strong>{{ prog.exam_score }}%</strong></small>
+                </div>
+                {% endif %}
+                <div class="d-flex justify-content-between">
+                  <small class="text-muted">Started:</small>
+                  <small>{{ prog.started_at|date:"M d, Y"|default:"N/A" }}</small>
+                </div>
+              </div>
+              
+              <!-- Badge Earned -->
+              {% if prog.badge_earned %}
+              <div class="alert alert-success text-center mb-3">
+                <i class="bi bi-trophy-fill"></i> Badge Earned!
+              </div>
+              {% endif %}
+              
+              <!-- Action Buttons -->
+              <div class="d-grid">
+                {% if prog.status == 'completed' %}
+                <a href="{% url 'my_badges' %}" class="btn btn-success">
+                  <i class="bi bi-award"></i> View Badge
+                </a>
+                {% elif prog.status == 'failed' %}
+                <button class="btn btn-danger" disabled>
+                  <i class="bi bi-x-circle"></i> Failed
+                </button>
+                {% else %}
+                <a href="{% url 'certification_steps' prog.certification_id %}" class="btn btn-primary">
+                  <i class="bi bi-play-circle"></i> Continue
+                </a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="row">
+        <div class="col-12">
+          <div class="card shadow-sm">
+            <div class="card-body text-center py-5">
+              <i class="bi bi-award" style="font-size: 4rem; color: #ccc;"></i>
+              <h4 class="mt-3">No Certifications Yet</h4>
+              <p class="text-muted">You haven't enrolled in any certifications yet.</p>
+              <a href="{% url 'courses' %}" class="btn btn-primary mt-3">
+                <i class="bi bi-search"></i> Browse Courses
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+</main>
+
+<style>
+  .badge-lg {
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+  }
+  
+  .cert-stats {
+    border-top: 1px solid #dee2e6;
+    border-bottom: 1px solid #dee2e6;
+    padding: 0.75rem 0;
+  }
+</style>
+{% endblock %}

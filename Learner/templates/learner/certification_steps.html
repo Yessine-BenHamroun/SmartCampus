@@ -1,0 +1,237 @@
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}{{ certification.title }} - Steps - SmartCampus{% endblock %}
+
+{% block body_class %}certification-steps-page{% endblock %}
+
+{% block content %}
+<main id="main">
+  <!-- Breadcrumbs -->
+  <div class="breadcrumbs">
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-center">
+        <h2>{{ certification.title }}</h2>
+        <ol>
+          <li><a href="{% url 'index' %}">Home</a></li>
+          <li><a href="{% url 'my_learning' %}">My Courses</a></li>
+          {% if course %}
+          <li><a href="{% url 'course_detail' course.id %}">{{ course.title }}</a></li>
+          {% endif %}
+          <li>{{ certification.title }}</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- Certification Steps Section -->
+  <section class="certification-steps-section py-5">
+    <div class="container">
+      <div class="row">
+        <!-- Certification Info Sidebar -->
+        <div class="col-lg-4 mb-4">
+          <div class="card shadow-sm sticky-top" style="top: 100px;">
+            <div class="card-body">
+              <div class="text-center mb-3">
+                {% if certification.badge_image %}
+                <img src="{{ certification.badge_image }}" alt="{{ certification.title }}" class="img-fluid rounded" style="max-height: 150px;">
+                {% else %}
+                <div class="cert-icon-large">
+                  <i class="bi bi-award-fill text-primary" style="font-size: 4rem;"></i>
+                </div>
+                {% endif %}
+              </div>
+              
+              <h4 class="card-title text-center">{{ certification.title }}</h4>
+              <p class="card-text text-muted">{{ certification.description }}</p>
+              
+              <hr>
+              
+              <!-- Progress Info -->
+              <div class="progress-section mb-3">
+                <h6><i class="bi bi-graph-up"></i> Your Progress</h6>
+                {% if progress %}
+                <div class="progress mb-2" style="height: 25px;">
+                  <div class="progress-bar {% if progress.status == 'completed' %}bg-success{% elif progress.status == 'failed' %}bg-danger{% else %}bg-primary{% endif %}" 
+                       role="progressbar" 
+                       style="width: {{ progress.current_step|default:0 }}%;" 
+                       aria-valuenow="{{ progress.current_step|default:0 }}" 
+                       aria-valuemin="0" 
+                       aria-valuemax="{{ certification.total_steps }}">
+                    {{ progress.current_step|default:0 }}/{{ certification.total_steps }} steps
+                  </div>
+                </div>
+                <p class="mb-0">
+                  <span class="badge {% if progress.status == 'completed' %}bg-success{% elif progress.status == 'in_progress' %}bg-primary{% elif progress.status == 'failed' %}bg-danger{% else %}bg-secondary{% endif %}">
+                    {{ progress.status|title }}
+                  </span>
+                </p>
+                {% else %}
+                <p class="text-muted">Not started yet</p>
+                {% endif %}
+              </div>
+              
+              <hr>
+              
+              <!-- Certification Details -->
+              <div class="cert-details">
+                <p class="mb-2"><i class="bi bi-list-check"></i> <strong>{{ certification.total_steps }}</strong> Steps</p>
+                <p class="mb-2"><i class="bi bi-bar-chart"></i> <strong>{{ certification.passing_score }}%</strong> Passing Score</p>
+                {% if progress %}
+                <p class="mb-2"><i class="bi bi-trophy"></i> <strong>{{ progress.exam_attempts|default:0 }}</strong> Exam Attempts</p>
+                {% endif %}
+              </div>
+              
+              {% if progress and progress.badge_earned %}
+              <hr>
+              <div class="alert alert-success text-center mb-0">
+                <i class="bi bi-check-circle-fill"></i> Badge Earned!
+                <div class="mt-2">
+                  <a href="{% url 'my_badges' %}" class="btn btn-success btn-sm">
+                    <i class="bi bi-award"></i> View Badge
+                  </a>
+                </div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Steps List -->
+        <div class="col-lg-8">
+          <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0"><i class="bi bi-list-ol"></i> Certification Steps</h5>
+            </div>
+            <div class="card-body">
+              {% if steps %}
+              <div class="steps-list">
+                {% for step in steps %}
+                <div class="step-item mb-4 p-3 border rounded {% if progress and step.id in progress.completed_steps %}border-success bg-light{% else %}border-secondary{% endif %}">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                      <h5 class="step-title mb-2">
+                        <span class="badge bg-primary me-2">Step {{ step.order }}</span>
+                        {{ step.title }}
+                        {% if progress and step.id in progress.completed_steps %}
+                        <i class="bi bi-check-circle-fill text-success ms-2"></i>
+                        {% endif %}
+                      </h5>
+                      <p class="step-description text-muted mb-2">{{ step.description }}</p>
+                      
+                      <div class="step-meta">
+                        <span class="badge bg-info me-2">
+                          <i class="bi bi-{{ step.type }}"></i> {{ step.type|title }}
+                        </span>
+                        {% if step.is_required %}
+                        <span class="badge bg-warning">Required</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Step Content -->
+                  <div class="step-content mt-3">
+                    {% if step.content_type == 'video' and step.content_url %}
+                    <div class="video-container mb-3">
+                      <video controls class="w-100" style="max-height: 400px;">
+                        <source src="{{ step.content_url }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                      </video>
+                    </div>
+                    {% elif step.content_type == 'pdf' and step.content_url %}
+                    <div class="pdf-container mb-3">
+                      <a href="{{ step.content_url }}" target="_blank" class="btn btn-outline-primary">
+                        <i class="bi bi-file-pdf"></i> View PDF Document
+                      </a>
+                    </div>
+                    {% elif step.content_type == 'text' and step.content_text %}
+                    <div class="text-content mb-3 p-3 bg-light rounded">
+                      {{ step.content_text|safe }}
+                    </div>
+                    {% endif %}
+                  </div>
+                  
+                  <!-- Action Button -->
+                  <div class="step-actions mt-3">
+                    {% if progress and step.id in progress.completed_steps %}
+                    <button class="btn btn-success btn-sm" disabled>
+                      <i class="bi bi-check-circle-fill"></i> Completed
+                    </button>
+                    {% else %}
+                    <form method="POST" action="{% url 'complete_certification_step' step.id %}" style="display: inline;">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-check-circle"></i> Mark as Complete
+                      </button>
+                    </form>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              
+              <!-- Final Exam Button -->
+              {% if progress and progress.status == 'in_progress' %}
+              <div class="final-exam-section mt-4 p-4 border rounded bg-warning bg-opacity-10">
+                <h5><i class="bi bi-clipboard-check"></i> Final Exam</h5>
+                <p>You have completed {{ progress.completed_steps|length }} out of {{ certification.total_steps }} steps.</p>
+                {% if all_steps_completed %}
+                <p class="text-success"><strong>All steps completed! You can now take the final exam.</strong></p>
+                <a href="{% url 'take_certification_exam' certification.id %}" class="btn btn-warning btn-lg">
+                  <i class="bi bi-play-circle"></i> Take Final Exam
+                </a>
+                <p class="text-muted mt-2">
+                  <small>Passing score: {{ certification.passing_score }}%</small><br>
+                  <small>Attempts used: {{ progress.exam_attempts|default:0 }}/3</small>
+                </p>
+                {% else %}
+                <p class="text-warning">Complete all steps to unlock the final exam.</p>
+                {% endif %}
+              </div>
+              {% endif %}
+              
+              {% else %}
+              <div class="alert alert-info text-center">
+                <i class="bi bi-info-circle"></i> No steps have been added to this certification yet.
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<style>
+  .cert-icon-large {
+    padding: 2rem;
+  }
+  
+  .step-item {
+    transition: all 0.3s ease;
+  }
+  
+  .step-item:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+  
+  .sticky-top {
+    z-index: 100;
+  }
+  
+  .video-container video {
+    border-radius: 8px;
+  }
+  
+  .step-title {
+    color: #2c3e50;
+  }
+  
+  .badge-custom {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
+  }
+</style>
+{% endblock %}

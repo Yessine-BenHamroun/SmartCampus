@@ -1,0 +1,523 @@
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}AI Certification Recommendations - SmartCampus{% endblock %}
+
+{% block content %}
+<style>
+    .recommendations-hero {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 60px 0;
+        margin-bottom: 40px;
+    }
+    
+    .instructor-stats {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        margin-bottom: 40px;
+    }
+    
+    .stat-box {
+        text-align: center;
+        padding: 20px;
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #667eea;
+        display: block;
+    }
+    
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin-top: 5px;
+    }
+    
+    .cert-recommendation-card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 25px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        border-left: 5px solid #667eea;
+    }
+    
+    .cert-recommendation-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .cert-recommendation-card.high-success {
+        border-left-color: #28a745;
+    }
+    
+    .cert-recommendation-card.medium-success {
+        border-left-color: #ffc107;
+    }
+    
+    .cert-recommendation-card.low-success {
+        border-left-color: #6c757d;
+    }
+    
+    .cert-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 20px;
+    }
+    
+    .cert-title {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #2c3e50;
+        margin: 0;
+    }
+    
+    .success-badge {
+        display: inline-block;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+    
+    .success-badge.high {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+    }
+    
+    .success-badge.medium {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+    }
+    
+    .success-badge.low {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        color: #2c3e50;
+    }
+    
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 15px;
+        margin: 20px 0;
+    }
+    
+    .metric-box {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+    }
+    
+    .metric-value {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #667eea;
+        display: block;
+        margin-bottom: 5px;
+    }
+    
+    .metric-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        text-transform: uppercase;
+    }
+    
+    .progress-bar-container {
+        background: #e9ecef;
+        border-radius: 10px;
+        height: 10px;
+        overflow: hidden;
+        margin-top: 10px;
+    }
+    
+    .progress-bar-fill {
+        height: 100%;
+        border-radius: 10px;
+        transition: width 0.5s ease;
+    }
+    
+    .progress-bar-fill.high {
+        background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%);
+    }
+    
+    .progress-bar-fill.medium {
+        background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .progress-bar-fill.low {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .recommendation-reason {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 5px;
+    }
+    
+    .recommendation-reason i {
+        color: #ffc107;
+        margin-right: 10px;
+    }
+    
+    .skills-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 20px 0;
+    }
+    
+    .skill-tag {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 6px 15px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .cert-details {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 2px solid #e9ecef;
+    }
+    
+    .detail-item {
+        text-align: center;
+    }
+    
+    .detail-label {
+        color: #6c757d;
+        font-size: 0.85rem;
+        margin-bottom: 5px;
+    }
+    
+    .detail-value {
+        font-weight: bold;
+        color: #2c3e50;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+    
+    .btn-create {
+        flex: 1;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-create:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+    
+    .btn-learn-more {
+        background: white;
+        color: #667eea;
+        border: 2px solid #667eea;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-learn-more:hover {
+        background: #667eea;
+        color: white;
+    }
+    
+    .info-alert {
+        background: #d1ecf1;
+        border-left: 4px solid #0c5460;
+        padding: 20px;
+        margin-bottom: 30px;
+        border-radius: 5px;
+    }
+    
+    .expertise-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .expertise-tag {
+        background: #e7f3ff;
+        color: #0066cc;
+        padding: 5px 12px;
+        border-radius: 15px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    @media (max-width: 768px) {
+        .metrics-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .cert-header {
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .cert-details {
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<!-- Hero Section -->
+<div class="recommendations-hero">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h1 class="display-4 mb-3">
+                    <i class="bi bi-stars"></i> AI Certification Recommendations
+                </h1>
+                <p class="lead mb-0">
+                    Discover which certifications you should create next based on your expertise, market demand, and student interest
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    {% if error %}
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i> {{ error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+    
+    {% if instructor_info %}
+    <!-- Instructor Stats -->
+    <div class="instructor-stats">
+        <h3 class="mb-4"><i class="bi bi-person-badge"></i> Your Profile Overview</h3>
+        <div class="row">
+            <div class="col-md-3 col-6">
+                <div class="stat-box">
+                    <span class="stat-number">{{ instructor_info.total_courses }}</span>
+                    <div class="stat-label">Active Courses</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="stat-box">
+                    <span class="stat-number">{{ instructor_info.existing_certifications }}</span>
+                    <div class="stat-label">Created Certifications</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="stat-box">
+                    <div class="stat-label mb-2">Your Expertise Areas</div>
+                    <div class="expertise-tags">
+                        {% for area in instructor_info.expertise_areas %}
+                        <span class="expertise-tag">{{ area|title }}</span>
+                        {% empty %}
+                        <span class="text-muted">Build courses to establish expertise</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="info-alert">
+        <h5><i class="bi bi-info-circle-fill"></i> How AI Recommendations Work</h5>
+        <p class="mb-0">
+            Our AI analyzes <strong>market demand</strong>, your <strong>teaching expertise</strong>, 
+            <strong>student interest</strong>, and <strong>industry growth trends</strong> to recommend 
+            certifications with the highest potential for success. Each recommendation includes a success 
+            likelihood percentage to help you make informed decisions.
+        </p>
+    </div>
+    {% endif %}
+    
+    <!-- Recommendations Grid -->
+    <div class="recommendations-container">
+        <h3 class="mb-4">
+            <i class="bi bi-lightbulb-fill"></i> Top {{ recommendations|length }} Recommended Certifications
+        </h3>
+        
+        {% if recommendations %}
+            {% for rec in recommendations %}
+            <div class="cert-recommendation-card 
+                {% if rec.success_likelihood >= 85 %}high-success
+                {% elif rec.success_likelihood >= 70 %}medium-success
+                {% else %}low-success{% endif %}">
+                
+                <div class="cert-header">
+                    <h4 class="cert-title">{{ rec.certification }}</h4>
+                    <span class="success-badge 
+                        {% if rec.success_likelihood >= 85 %}high
+                        {% elif rec.success_likelihood >= 70 %}medium
+                        {% else %}low{% endif %}">
+                        {{ rec.success_likelihood }}% Success Rate
+                    </span>
+                </div>
+                
+                <div class="recommendation-reason">
+                    <i class="bi bi-star-fill"></i>
+                    <strong>Why this certification?</strong> {{ rec.recommendation_reason }}
+                </div>
+                
+                <!-- Metrics Grid -->
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <span class="metric-value">{{ rec.expertise_match }}%</span>
+                        <div class="metric-label">Your Expertise Match</div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill 
+                                {% if rec.expertise_match >= 70 %}high
+                                {% elif rec.expertise_match >= 50 %}medium
+                                {% else %}low{% endif %}" 
+                                style="width: {{ rec.expertise_match }}%">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-box">
+                        <span class="metric-value">{{ rec.student_interest }}%</span>
+                        <div class="metric-label">Student Interest</div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill 
+                                {% if rec.student_interest >= 70 %}high
+                                {% elif rec.student_interest >= 50 %}medium
+                                {% else %}low{% endif %}" 
+                                style="width: {{ rec.student_interest }}%">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-box">
+                        <span class="metric-value">{{ rec.demand_score|floatformat:0|add:"0" }}%</span>
+                        <div class="metric-label">Market Demand</div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill high" 
+                                style="width: {{ rec.demand_score|floatformat:0|add:"0" }}%">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-box">
+                        <span class="metric-value">{{ rec.growth_rate|floatformat:0|add:"0" }}%</span>
+                        <div class="metric-label">Growth Rate</div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill medium" 
+                                style="width: {{ rec.growth_rate|floatformat:0|add:"0" }}%">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Required Skills -->
+                <div>
+                    <strong class="d-block mb-2">Required Skills:</strong>
+                    <div class="skills-tags">
+                        {% for skill in rec.required_skills %}
+                        <span class="skill-tag">{{ skill|title }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Certification Details -->
+                <div class="cert-details">
+                    <div class="detail-item">
+                        <div class="detail-label">Difficulty Level</div>
+                        <div class="detail-value">{{ rec.difficulty_level }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Estimated Time</div>
+                        <div class="detail-value">{{ rec.estimated_time }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Priority</div>
+                        <div class="detail-value">{{ rec.priority }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">AI Score</div>
+                        <div class="detail-value">{{ rec.ai_score|floatformat:2 }}</div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <a href="{% url 'instructor_courses' %}" class="btn-create">
+                        <i class="bi bi-plus-circle"></i> Create This Certification
+                    </a>
+                    <button class="btn-learn-more" onclick="alert('Feature coming soon: Detailed certification guide and templates!')">
+                        <i class="bi bi-book"></i> Learn More
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 4rem; color: #ccc;"></i>
+                <h4 class="mt-3 text-muted">No recommendations available</h4>
+                <p class="text-muted">Create some courses first to get personalized recommendations</p>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- CTA Section -->
+    <div class="text-center mt-5 mb-5">
+        <h4>Ready to create your next certification?</h4>
+        <p class="text-muted mb-4">Use these AI-powered insights to build high-impact certifications</p>
+        <a href="{% url 'instructor_courses' %}" class="btn btn-lg btn-primary">
+            <i class="bi bi-arrow-left-circle"></i> Back to My Courses
+        </a>
+    </div>
+</div>
+
+<script>
+// Add animation on scroll
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.cert-recommendation-card');
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '0';
+                entry.target.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    entry.target.style.transition = 'all 0.5s ease';
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }, 100);
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.1 });
+    
+    cards.forEach(card => observer.observe(card));
+});
+</script>
+{% endblock %}

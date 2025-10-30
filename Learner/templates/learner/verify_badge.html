@@ -1,0 +1,171 @@
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}Verify Badge - SmartCampus{% endblock %}
+
+{% block body_class %}verify-badge-page{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<section class="page-header section light-background">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-8" data-aos="fade-up">
+        <h1><i class="bi bi-shield-check"></i> Badge Verification</h1>
+        <p>Verify the authenticity of a SmartCampus certification badge</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Verification Section -->
+<section class="verification-section py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        {% if error %}
+        <!-- Error Message -->
+        <div class="alert alert-danger" role="alert">
+          <i class="bi bi-exclamation-triangle"></i>
+          <strong>Verification Failed</strong>
+          <p class="mb-0 mt-2">{{ error }}</p>
+        </div>
+        <div class="text-center mt-4">
+          <a href="{% url 'index' %}" class="btn btn-primary">
+            <i class="bi bi-house"></i> Return to Home
+          </a>
+        </div>
+        
+        {% elif badge %}
+        <!-- Verified Badge -->
+        <div class="card shadow-lg border-success">
+          <div class="card-header bg-success text-white text-center">
+            <h3 class="mb-0">
+              <i class="bi bi-check-circle-fill"></i> Badge Verified
+            </h3>
+          </div>
+          <div class="card-body">
+            <!-- Badge Information -->
+            <div class="text-center mb-4">
+              <div class="badge-icon mb-3">
+                <i class="bi bi-trophy-fill text-warning" style="font-size: 5rem;"></i>
+              </div>
+              <h4 class="text-primary">{{ badge.certification_name }}</h4>
+              <p class="text-muted">{{ badge.course_name }}</p>
+            </div>
+            
+            <!-- Student Information -->
+            <div class="student-info bg-light p-4 rounded mb-4">
+              <h5 class="mb-3"><i class="bi bi-person-badge"></i> Badge Holder</h5>
+              <div class="row">
+                <div class="col-md-6">
+                  <p><strong>Name:</strong> {{ badge.student_name }}</p>
+                  <p><strong>Email:</strong> {{ badge.student_email }}</p>
+                </div>
+                <div class="col-md-6">
+                  <p><strong>Earned On:</strong> {{ badge.earned_at|date:"F d, Y" }}</p>
+                  <p><strong>Verification Code:</strong> <code>{{ verification_code }}</code></p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Score Information -->
+            <div class="score-info bg-light p-4 rounded mb-4">
+              <h5 class="mb-3"><i class="bi bi-graph-up"></i> Performance</h5>
+              <div class="row">
+                <div class="col-md-6">
+                  <p><strong>Final Score:</strong> 
+                    <span class="badge bg-success fs-6">{{ badge.final_score }}%</span>
+                  </p>
+                </div>
+                <div class="col-md-6">
+                  <p><strong>Status:</strong> 
+                    <span class="badge bg-success">
+                      <i class="bi bi-check-circle"></i> Certified
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Verification Details -->
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle"></i>
+              <strong>About This Badge</strong>
+              <p class="mb-0 mt-2">
+                This badge certifies that the holder has successfully completed the certification requirements 
+                for <strong>{{ badge.certification_name }}</strong> in the course <strong>{{ badge.course_name }}</strong> 
+                on SmartCampus learning platform.
+              </p>
+            </div>
+            
+            <!-- Badge URL -->
+            {% if badge.badge_url %}
+            <div class="text-center mt-4">
+              <a href="{{ badge.badge_url }}" target="_blank" class="btn btn-outline-primary">
+                <i class="bi bi-download"></i> Download Badge
+              </a>
+            </div>
+            {% endif %}
+          </div>
+          
+          <!-- Verification Footer -->
+          <div class="card-footer bg-light text-center">
+            <p class="mb-0 text-muted">
+              <i class="bi bi-shield-check"></i>
+              This badge is officially verified by SmartCampus
+            </p>
+          </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="text-center mt-4">
+          <a href="{% url 'index' %}" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-house"></i> Home
+          </a>
+          <a href="{% url 'courses' %}" class="btn btn-primary">
+            <i class="bi bi-book"></i> Browse Courses
+          </a>
+        </div>
+        
+        {% else %}
+        <!-- Loading or Initial State -->
+        <div class="text-center">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-3">Verifying badge...</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+.badge-icon {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.verification-section {
+  min-height: 60vh;
+}
+
+.student-info, .score-info {
+  border-left: 4px solid #28a745;
+}
+
+.card.border-success {
+  border-width: 2px;
+}
+</style>
+{% endblock %}

@@ -597,3 +597,249 @@ class VerifyBadgeView(APIView):
                 'email': student.email if student else None
             } if student else None
         }, status=status.HTTP_200_OK)
+
+
+class AIRecommendationsView(APIView):
+    """Get AI-powered certification recommendations"""
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        """Get top certification recommendations"""
+        try:
+            from certifications.ai_recommendations import SmartCertificationRecommender
+            
+            # Get number of recommendations (default 10)
+            top_n = int(request.GET.get('top_n', 10))
+            top_n = min(top_n, 20)  # Max 20 recommendations
+            
+            # Initialize recommender
+            recommender = SmartCertificationRecommender()
+            
+            # Get recommendations
+            recommendations = recommender.get_recommendations_dict(top_n=top_n)
+            
+            return Response({
+                'success': True,
+                'recommendations': recommendations,
+                'total': len(recommendations)
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'error': f'Failed to generate recommendations: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class InstructorCertificationRecommendationsView(APIView):
+    """Get AI-powered certification creation recommendations for instructors"""
+    permission_classes = [IsInstructor]
+    
+    def get(self, request):
+        """Get certification creation recommendations for instructors"""
+        try:
+            from certifications.ai_recommendations import SmartCertificationRecommender
+            from courses.models import Course
+            
+            # Get instructor ID from request
+            user_email = request.user.get('user_email') if isinstance(request.user, dict) else getattr(request.user, 'email', None)
+            instructor = User.find_by_email(user_email)
+            instructor_id = str(instructor.id)
+            
+            # Get instructor's existing courses to analyze expertise
+            instructor_courses = list(Course.find_by_instructor(instructor_id))
+            
+            # Get existing certifications to avoid duplicates
+            existing_certs = list(Certification.find_by_instructor(instructor_id))
+            existing_cert_names = [cert.title.lower() for cert in existing_certs]
+            
+            # Initialize recommender
+            recommender = SmartCertificationRecommender()
+            
+            # Get all recommendations
+            all_recommendations = recommender.get_recommendations_dict(top_n=20)
+            
+            # Enhance with instructor-specific data
+            enhanced_recommendations = []
+            for rec in all_recommendations:
+                cert_name = rec['certification'].lower()
+                
+                # Skip if instructor already has this certification
+                if any(cert_name in existing_name or existing_name in cert_name 
+                       for existing_name in existing_cert_names):
+                    continue
+                
+                # Calculate instructor expertise match (based on course topics)
+                expertise_match = self._calculate_expertise_match(
+                    rec['required_skills'], 
+                    instructor_courses
+                )
+                
+                # Calculate student interest (mock data - can be enhanced with real student queries)
+                student_interest = self._calculate_student_interest(rec['certification'])
+                
+                # Calculate creation success likelihood
+                success_likelihood = self._calculate_success_likelihood(
+                    rec['ai_score'],
+                    expertise_match,
+                    student_interest,
+                    rec['demand_score']
+                )
+                
+                # Add instructor-specific fields
+                enhanced_rec = {
+                    **rec,
+                    'expertise_match': round(expertise_match * 100, 1),
+                    'student_interest': round(student_interest * 100, 1),
+                    'success_likelihood': round(success_likelihood * 100, 1),
+                    'recommendation_reason': self._generate_recommendation_reason(
+                        success_likelihood,
+                        expertise_match,
+                        student_interest,
+                        rec['demand_score']
+                    ),
+                    'difficulty_level': self._estimate_difficulty(rec['required_skills']),
+                    'estimated_time': self._estimate_creation_time(rec['required_skills']),
+                }
+                
+                enhanced_recommendations.append(enhanced_rec)
+            
+            # Sort by success likelihood
+            enhanced_recommendations.sort(key=lambda x: x['success_likelihood'], reverse=True)
+            
+            # Get top N (default 10)
+            top_n = int(request.GET.get('top_n', 10))
+            top_recommendations = enhanced_recommendations[:top_n]
+            
+            return Response({
+                'success': True,
+                'recommendations': top_recommendations,
+                'total': len(top_recommendations),
+                'instructor_info': {
+                    'existing_certifications': len(existing_certs),
+                    'total_courses': len(instructor_courses),
+                    'expertise_areas': self._get_expertise_areas(instructor_courses)
+                }
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({
+                'error': f'Failed to generate recommendations: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def _calculate_expertise_match(self, required_skills, instructor_courses):
+        """Calculate how well instructor's expertise matches certification requirements"""
+        if not instructor_courses:
+            return 0.3  # Base score for new instructors
+        
+        # Extract skills from course titles and descriptions
+        course_keywords = set()
+        for course in instructor_courses:
+            course_keywords.update(course.title.lower().split())
+            if hasattr(course, 'description') and course.description:
+                course_keywords.update(course.description.lower().split())
+        
+        # Count skill matches
+        matches = sum(1 for skill in required_skills if skill.lower() in course_keywords)
+        match_ratio = matches / len(required_skills) if required_skills else 0
+        
+        # Add bonus for number of courses (experience factor)
+        experience_bonus = min(len(instructor_courses) * 0.05, 0.2)
+        
+        return min(match_ratio * 0.8 + experience_bonus, 1.0)
+    
+    def _calculate_student_interest(self, certification_name):
+        """Calculate student interest based on market trends and platform data"""
+        # Mock implementation - can be enhanced with real student enrollment data
+        high_interest_keywords = ['cybersecurity', 'cloud', 'data science', 'ai', 'machine learning', 'devops']
+        medium_interest_keywords = ['python', 'web development', 'database', 'network']
+        
+        cert_lower = certification_name.lower()
+        
+        if any(keyword in cert_lower for keyword in high_interest_keywords):
+            return 0.8 + (hash(certification_name) % 20) / 100  # 0.80-0.99
+        elif any(keyword in cert_lower for keyword in medium_interest_keywords):
+            return 0.6 + (hash(certification_name) % 20) / 100  # 0.60-0.79
+        else:
+            return 0.4 + (hash(certification_name) % 20) / 100  # 0.40-0.59
+    
+    def _calculate_success_likelihood(self, ai_score, expertise_match, student_interest, demand_score):
+        """Calculate overall success likelihood for creating this certification"""
+        # Weighted formula
+        likelihood = (
+            ai_score * 0.25 +           # Market viability (25%)
+            expertise_match * 0.35 +     # Instructor capability (35%)
+            student_interest * 0.25 +    # Student demand (25%)
+            demand_score * 0.15          # Industry demand (15%)
+        )
+        return min(likelihood, 1.0)
+    
+    def _generate_recommendation_reason(self, success_likelihood, expertise_match, student_interest, demand_score):
+        """Generate human-readable recommendation reason"""
+        reasons = []
+        
+        if success_likelihood > 0.85:
+            reasons.append("Excellent match for your expertise")
+        elif success_likelihood > 0.75:
+            reasons.append("Strong potential for success")
+        else:
+            reasons.append("Good opportunity to expand offerings")
+        
+        if expertise_match > 0.7:
+            reasons.append("aligns with your current courses")
+        elif expertise_match > 0.4:
+            reasons.append("builds on your existing knowledge")
+        else:
+            reasons.append("new area to explore")
+        
+        if student_interest > 0.7:
+            reasons.append("high student demand")
+        
+        if demand_score > 0.85:
+            reasons.append("strong market growth")
+        
+        return " - ".join(reasons).capitalize()
+    
+    def _estimate_difficulty(self, required_skills):
+        """Estimate difficulty level for creating the certification"""
+        skill_count = len(required_skills)
+        
+        if skill_count >= 5:
+            return "Advanced"
+        elif skill_count >= 3:
+            return "Intermediate"
+        else:
+            return "Beginner"
+    
+    def _estimate_creation_time(self, required_skills):
+        """Estimate time needed to create the certification"""
+        skill_count = len(required_skills)
+        
+        if skill_count >= 5:
+            return "6-8 weeks"
+        elif skill_count >= 3:
+            return "4-6 weeks"
+        else:
+            return "2-4 weeks"
+    
+    def _get_expertise_areas(self, instructor_courses):
+        """Extract main expertise areas from instructor's courses"""
+        if not instructor_courses:
+            return []
+        
+        # Get most common keywords from course titles
+        keywords = []
+        for course in instructor_courses:
+            keywords.extend(course.title.lower().split())
+        
+        # Count occurrences
+        from collections import Counter
+        common_keywords = Counter(keywords).most_common(5)
+        
+        # Filter out common words
+        stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'}
+        areas = [word for word, count in common_keywords if word not in stop_words]
+        
+        return areas[:3]  # Top 3 expertise areas
+

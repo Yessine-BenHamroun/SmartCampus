@@ -13,6 +13,7 @@
         <li><a href="{% url 'index' %}" class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}">Home</a></li>
         <li><a href="{% url 'about' %}" class="{% if request.resolver_match.url_name == 'about' %}active{% endif %}">About</a></li>
         <li><a href="{% url 'courses' %}" class="{% if request.resolver_match.url_name == 'courses' %}active{% endif %}">Courses</a></li>
+        <li><a href="{% url 'certification_trends' %}" class="{% if request.resolver_match.url_name == 'certification_trends' %}active{% endif %}"><i class="bi bi-graph-up-arrow"></i> AI Trends</a></li>
         <li><a href="{% url 'instructors' %}" class="{% if request.resolver_match.url_name == 'instructors' %}active{% endif %}">Instructors</a></li>
         
         {% if user.is_authenticated %}
@@ -22,6 +23,8 @@
             <ul>
               <li><a href="{% url 'my_learning' %}"><i class="bi bi-book"></i> My Courses</a></li>
               <li><a href="{% url 'my_progress' %}"><i class="bi bi-graph-up"></i> My Progress</a></li>
+              <li><a href="{% url 'my_certification_progress' %}"><i class="bi bi-award"></i> My Certifications</a></li>
+              <li><a href="{% url 'my_badges' %}"><i class="bi bi-trophy"></i> My Badges</a></li>
               <li><a href="{% url 'my_submissions' %}"><i class="bi bi-file-earmark-check"></i> Submissions</a></li>
               <li><a href="{% url 'discussions' %}"><i class="bi bi-chat-dots"></i> Discussions</a></li>
             </ul>
@@ -34,6 +37,7 @@
             <ul>
               <li><a href="{% url 'instructor_dashboard' %}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
               <li><a href="{% url 'instructor_courses' %}"><i class="bi bi-book"></i> My Courses</a></li>
+              <li><a href="{% url 'instructor_cert_recommendations' %}"><i class="bi bi-stars"></i> AI Cert Recommendations</a></li>
               <li><a href="{% url 'instructor_submissions' %}"><i class="bi bi-file-earmark-text"></i> Submissions</a></li>
               <li><a href="{% url 'course_analytics' %}"><i class="bi bi-bar-chart"></i> Analytics</a></li>
             </ul>
@@ -64,6 +68,10 @@
         <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="bi bi-person"></i> My Profile</a></li>
         <li><a class="dropdown-item" href="{% url 'edit_profile' %}"><i class="bi bi-gear"></i> Edit Profile</a></li>
         <li><a class="dropdown-item" href="{% url 'courses' %}"><i class="bi bi-book"></i> My Courses</a></li>
+        {% if user.role == 'student' or not user.role %}
+        <li><a class="dropdown-item" href="{% url 'my_certification_progress' %}"><i class="bi bi-award"></i> My Certifications</a></li>
+        <li><a class="dropdown-item" href="{% url 'my_badges' %}"><i class="bi bi-trophy"></i> My Badges</a></li>
+        {% endif %}
         <li><hr class="dropdown-divider"></li>
         <li><a class="dropdown-item" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
       </ul>

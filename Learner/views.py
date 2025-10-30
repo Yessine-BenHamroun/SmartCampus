@@ -1533,6 +1533,82 @@ def my_badges_view(request):
     return render(request, 'learner/my_badges.html', context)
 
 
+def ai_certification_trends_view(request):
+    """Display AI-powered certification recommendations (Public)"""
+    import requests
+    
+    recommendations = []
+    error = None
+    
+    try:
+        # Fetch AI recommendations from backend
+        response = requests.get('http://localhost:8001/api/certifications/ai-recommendations/')
+        
+        if response.status_code == 200:
+            data = response.json()
+            recommendations = data.get('recommendations', [])
+        else:
+            error = "Unable to load recommendations at this time."
+    
+    except Exception as e:
+        error = f"Error loading recommendations: {str(e)}"
+        print(f"❌ Error in ai_certification_trends_view: {str(e)}")
+    
+    context = {
+        'page_title': 'AI Certification Trends',
+        'recommendations': recommendations,
+        'error': error
+    }
+    
+    return render(request, 'learner/ai_certification_trends.html', context)
+
+
+@api_login_required
+def instructor_certification_recommendations_view(request):
+    """Display AI-powered certification creation recommendations for instructors"""
+    import requests
+    
+    user = get_current_user(request)
+    user_role = user.get('role', 'student')
+    
+    if user_role not in ['instructor', 'admin']:
+        messages.error(request, 'Access denied. Instructor privileges required.')
+        return redirect('index')
+    
+    access_token = get_access_token(request)
+    recommendations = []
+    instructor_info = {}
+    error = None
+    
+    try:
+        # Fetch AI recommendations from backend (instructor-specific endpoint)
+        response = requests.get(
+            'http://localhost:8001/api/certifications/instructor/recommendations/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            recommendations = data.get('recommendations', [])
+            instructor_info = data.get('instructor_info', {})
+        else:
+            error = "Unable to load recommendations at this time."
+            print(f"❌ Backend returned status {response.status_code}: {response.text}")
+    
+    except Exception as e:
+        error = f"Error loading recommendations: {str(e)}"
+        print(f"❌ Error in instructor_certification_recommendations_view: {str(e)}")
+    
+    context = {
+        'page_title': 'AI Certification Recommendations',
+        'recommendations': recommendations,
+        'instructor_info': instructor_info,
+        'error': error
+    }
+    
+    return render(request, 'learner/instructor_cert_recommendations.html', context)
+
+
 @api_login_required
 def manage_certification_steps_view(request, certification_id):
     """Manage certification steps (Instructor only)"""
@@ -1596,6 +1672,7 @@ def manage_certification_steps_view(request, certification_id):
         'certification': certification,
         'steps': steps,
         'final_exam': final_exam,
+        'has_exam': final_exam is not None,
         'page_title': f'Manage Steps - {certification.get("title") if certification else "Certification"}'
     }
     
@@ -1978,3 +2055,21 @@ def course_learning_view(request, course_id):
     }
     
     return render(request, 'learner/course_learning.html', context)
+
+
+# ============= STUDENT CERTIFICATION VIEWS =============
+# Import student certification functions
+from Learner.views_certification_student import (
+    enroll_in_certification,
+    certification_steps_view,
+    complete_certification_step,
+    submit_certification_exam,
+    my_certification_progress_view,
+    verify_badge_view
+)
+
+# Import certification exam functions
+from Learner.views_certification_exam import (
+    create_certification_exam_view,
+    take_certification_exam_view
+)

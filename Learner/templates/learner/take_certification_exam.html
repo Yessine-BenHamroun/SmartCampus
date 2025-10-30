@@ -1,0 +1,244 @@
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}Final Exam{% if certification %} - {{ certification.title }}{% endif %} - SmartCampus{% endblock %}
+
+{% block body_class %}take-certification-exam-page{% endblock %}
+
+{% block content %}
+<main id="main">
+  <!-- Breadcrumbs -->
+  <div class="breadcrumbs">
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-center">
+        <h2>Final Exam</h2>
+        <ol>
+          <li><a href="{% url 'index' %}">Home</a></li>
+          <li><a href="{% url 'my_learning' %}">My Courses</a></li>
+          <li><a href="{% url 'certification_steps' certification.id %}">{{ certification.title }}</a></li>
+          <li>Final Exam</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exam Section -->
+  <section class="exam-section py-5">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-lg-10">
+          {% if not can_take_exam %}
+          <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i> 
+            {% if attempts_remaining <= 0 %}
+            <strong>No attempts remaining.</strong> You have used all your exam attempts.
+            {% else %}
+            <strong>Complete all steps first.</strong> You must complete all certification steps before taking the final exam.
+            {% endif %}
+          </div>
+          <a href="{% url 'certification_steps' certification.id %}" class="btn btn-primary">
+            <i class="bi bi-arrow-left"></i> Back to Certification
+          </a>
+          {% else %}
+          <!-- Exam Card -->
+          <div class="card shadow-lg">
+            <div class="card-header bg-warning text-dark">
+              <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="bi bi-clipboard-check"></i> {{ exam_step.title }}</h4>
+                <span class="badge bg-dark" id="timer"></span>
+              </div>
+            </div>
+            
+            <div class="card-body">
+              <!-- Exam Instructions -->
+              <div class="alert alert-info mb-4">
+                <h5><i class="bi bi-info-circle"></i> Instructions</h5>
+                <p class="mb-2">{{ exam_step.description }}</p>
+                <ul class="mb-0">
+                  <li>Passing Score: <strong>{{ exam_step.content.passing_score }}%</strong></li>
+                  <li>Attempts Remaining: <strong>{{ attempts_remaining }}</strong></li>
+                  {% if exam_step.content.time_limit_minutes > 0 %}
+                  <li>Time Limit: <strong>{{ exam_step.content.time_limit_minutes }} minutes</strong></li>
+                  {% else %}
+                  <li>Time Limit: <strong>No limit</strong></li>
+                  {% endif %}
+                  <li>Total Questions: <strong>{{ exam_step.content.questions|length }}</strong></li>
+                </ul>
+              </div>
+
+              <!-- Exam Form -->
+              <form method="POST" id="examForm">
+                {% csrf_token %}
+                
+                <div class="questions-container">
+                  {% for question in exam_step.content.questions %}
+                  <div class="card mb-4 question-card">
+                    <div class="card-header bg-light">
+                      <strong>Question {{ forloop.counter }}</strong>
+                      <span class="badge bg-primary float-end">{{ question.points }} point{{ question.points|pluralize }}</span>
+                    </div>
+                    <div class="card-body">
+                      <p class="question-text mb-3">{{ question.question_text }}</p>
+                      
+                      {% if question.question_type == 'multiple_choice' %}
+                      <div class="options">
+                        {% for option in question.options %}
+                        <div class="form-check mb-2">
+                          <input class="form-check-input" type="radio" 
+                                 name="question_{{ forloop.parentloop.counter0 }}" 
+                                 id="q{{ forloop.parentloop.counter0 }}_opt{{ forloop.counter0 }}" 
+                                 value="{{ forloop.counter0 }}" required>
+                          <label class="form-check-label" for="q{{ forloop.parentloop.counter0 }}_opt{{ forloop.counter0 }}">
+                            {% if forloop.counter == 1 %}A{% elif forloop.counter == 2 %}B{% elif forloop.counter == 3 %}C{% elif forloop.counter == 4 %}D{% endif %}. {{ option }}
+                          </label>
+                        </div>
+                        {% endfor %}
+                      </div>
+                      
+                      {% elif question.question_type == 'true_false' %}
+                      <div class="options">
+                        <div class="form-check mb-2">
+                          <input class="form-check-input" type="radio" 
+                                 name="question_{{ forloop.counter0 }}" 
+                                 id="q{{ forloop.counter0 }}_true" 
+                                 value="0" required>
+                          <label class="form-check-label" for="q{{ forloop.counter0 }}_true">
+                            True
+                          </label>
+                        </div>
+                        <div class="form-check mb-2">
+                          <input class="form-check-input" type="radio" 
+                                 name="question_{{ forloop.counter0 }}" 
+                                 id="q{{ forloop.counter0 }}_false" 
+                                 value="1">
+                          <label class="form-check-label" for="q{{ forloop.counter0 }}_false">
+                            False
+                          </label>
+                        </div>
+                      </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+
+                <!-- Submit Button -->
+                <div class="d-grid gap-2">
+                  <button type="button" class="btn btn-warning btn-lg" data-bs-toggle="modal" data-bs-target="#confirmSubmitModal">
+                    <i class="bi bi-send"></i> Submit Exam
+                  </button>
+                  <a href="{% url 'certification_steps' certification.id %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancel
+                  </a>
+                </div>
+              </form>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Confirm Submit Modal -->
+<div class="modal fade" id="confirmSubmitModal" tabindex="-1" aria-labelledby="confirmSubmitModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title" id="confirmSubmitModalLabel">
+          <i class="bi bi-exclamation-triangle"></i> Confirm Submission
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p><strong>Are you sure you want to submit your exam?</strong></p>
+        <p class="mb-0">You have <strong>{{ attempts_remaining }}</strong> attempt(s) remaining.</p>
+        <p class="text-danger mb-0">Once submitted, you cannot change your answers.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Review Answers</button>
+        <button type="button" class="btn btn-warning" onclick="document.getElementById('examForm').submit()">
+          <i class="bi bi-send"></i> Submit Exam
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+{% if exam_step.content.time_limit_minutes > 0 %}
+// Timer functionality
+let timeRemaining = {{ exam_step.content.time_limit_minutes }} * 60; // Convert to seconds
+const timerDisplay = document.getElementById('timer');
+
+function updateTimer() {
+  const minutes = Math.floor(timeRemaining / 60);
+  const seconds = timeRemaining % 60;
+  
+  timerDisplay.textContent = `Time: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+  
+  if (timeRemaining <= 300) { // 5 minutes
+    timerDisplay.classList.add('bg-danger');
+    timerDisplay.classList.remove('bg-dark');
+  }
+  
+  if (timeRemaining <= 0) {
+    clearInterval(timerInterval);
+    alert('Time is up! The exam will be auto-submitted.');
+    document.getElementById('examForm').submit();
+  }
+  
+  timeRemaining--;
+}
+
+const timerInterval = setInterval(updateTimer, 1000);
+updateTimer();
+{% endif %}
+
+// Warn before leaving page
+window.addEventListener('beforeunload', function(e) {
+  e.preventDefault();
+  e.returnValue = 'Are you sure you want to leave? Your exam progress will be lost.';
+});
+
+// Remove warning on form submit
+document.getElementById('examForm').addEventListener('submit', function() {
+  window.removeEventListener('beforeunload', arguments.callee);
+});
+</script>
+
+<style>
+.question-card {
+  border-left: 4px solid #ffc107;
+  transition: all 0.3s ease;
+}
+
+.question-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.question-text {
+  font-size: 1.1rem;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.form-check-label {
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.form-check-input:checked + .form-check-label {
+  background-color: #fff3cd;
+  font-weight: 500;
+}
+
+#timer {
+  font-size: 1.1rem;
+  padding: 0.5rem 1rem;
+}
+</style>
+{% endblock %}

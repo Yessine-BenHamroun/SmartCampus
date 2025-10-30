@@ -1,6 +1,11 @@
-{% extends 'learner/base.html' %} {% load static %} {% block title %}{{
-course.title }} - SmartCampus{% endblock %} {% block body_class
-%}course-detail-page{% endblock %} {% block content %}
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}{{ course.title }} - SmartCampus{% endblock %}
+
+{% block body_class %}course-detail-page{% endblock %}
+
+{% block content %}
 <!-- Page Header -->
 <section class="page-header section light-background">
   <div class="container">
@@ -217,8 +222,7 @@ course.title }} - SmartCampus{% endblock %} {% block body_class
               </div>
 
               <!-- Instructor Actions -->
-              {% if user.role == 'instructor' and course.instructor_id ==
-              user.id %}
+              {% if user.role == 'instructor' and course.instructor_id == user.id %}
               <div class="cert-instructor-actions mt-3">
                 <div class="btn-group w-100" role="group">
                   <a
@@ -254,94 +258,88 @@ course.title }} - SmartCampus{% endblock %} {% block body_class
               {% endif %}
 
               <!-- Check if user has progress in this certification -->
-              {% if my_progress %} {% for progress in my_progress %} {% if
-              progress.certification_id == cert.id %}
-              <div class="cert-progress">
-                <div class="progress-info">
-                  <span
-                    >Progress: {{ progress.current_step }}/{{ cert.total_steps
-                    }} steps</span
-                  >
-                  <span
-                    class="badge {% if progress.status == 'completed' %}bg-success{% elif progress.status == 'in_progress' %}bg-primary{% elif progress.status == 'failed' %}bg-danger{% else %}bg-secondary{% endif %}"
-                  >
-                    {{ progress.status|title }}
-                  </span>
-                </div>
-                {% if progress.badge_earned %}
-                <div class="alert alert-success mt-2">
-                  <i class="bi bi-check-circle-fill"></i> Badge Earned!
-                  <a href="/my-badges/" class="btn btn-sm btn-success ms-2"
-                    >View Badge</a
-                  >
-                </div>
-                {% elif progress.status == 'in_progress' %}
-                <a
-                  href="/certification/{{ cert.id }}/steps/"
-                  class="btn btn-primary btn-sm mt-2"
-                >
-                  <i class="bi bi-play-circle"></i> Continue Certification
-                </a>
-                {% elif progress.status == 'failed' %}
-                <p class="text-danger mt-2">
-                  <i class="bi bi-exclamation-circle"></i> Exam attempts
-                  exhausted
-                </p>
-                {% endif %}
-              </div>
-              {% endif %} {% endfor %} {% endif %}
+              {% if my_progress %}
+                {% for progress in my_progress %}
+                  {% if progress.certification_id == cert.id %}
+                    <div class="cert-progress">
+                      <div class="progress-info">
+                        <span>Progress: {{ progress.current_step }}/{{ cert.total_steps }} steps</span>
+                        <span class="badge {% if progress.status == 'completed' %}bg-success{% elif progress.status == 'in_progress' %}bg-primary{% elif progress.status == 'failed' %}bg-danger{% else %}bg-secondary{% endif %}">
+                          {{ progress.status|title }}
+                        </span>
+                      </div>
+                      {% if progress.badge_earned %}
+                        <div class="alert alert-success mt-2">
+                          <i class="bi bi-check-circle-fill"></i> Badge Earned!
+                          <a href="/my-badges/" class="btn btn-sm btn-success ms-2">View Badge</a>
+                        </div>
+                      {% elif progress.status == 'in_progress' %}
+                        <a href="/certification/{{ cert.id }}/steps/" class="btn btn-primary btn-sm mt-2">
+                          <i class="bi bi-play-circle"></i> Continue Certification
+                        </a>
+                      {% elif progress.status == 'failed' %}
+                        <p class="text-danger mt-2">
+                          <i class="bi bi-exclamation-circle"></i> Exam attempts exhausted
+                        </p>
+                      {% endif %}
+                    </div>
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
 
               <!-- Show enrollment button if not enrolled in certification -->
-              {% if is_enrolled and cert.is_active %} {% if not my_progress or
-              not my_progress|length %}
-              <button
-                class="btn btn-outline-primary btn-sm mt-3 enroll-cert-btn"
-                data-cert-id="{{ cert.id }}"
-                onclick="enrollInCertification('{{ cert.id }}')"
-              >
-                <i class="bi bi-award"></i> Start Certification
-              </button>
-              {% else %} {% with has_progress=False %} {% for progress in
-              my_progress %} {% if progress.certification_id == cert.id %} {%
-              with has_progress=True %}{% endwith %} {% endif %} {% endfor %} {%
-              if not has_progress %}
-              <button
-                class="btn btn-outline-primary btn-sm mt-3 enroll-cert-btn"
-                data-cert-id="{{ cert.id }}"
-                onclick="enrollInCertification('{{ cert.id }}')"
-              >
-                <i class="bi bi-award"></i> Start Certification
-              </button>
-              {% endif %} {% endwith %} {% endif %} {% elif not is_enrolled %}
-              <div class="alert alert-warning mt-3">
-                <i class="bi bi-lock"></i> Enroll in the course to access
-                certifications
-              </div>
+              {% if is_enrolled and cert.is_active %}
+                {% if not my_progress or not my_progress|length %}
+                  <button
+                    class="btn btn-outline-primary btn-sm mt-3 enroll-cert-btn"
+                    data-cert-id="{{ cert.id }}"
+                    onclick="enrollInCertification('{{ cert.id }}')"
+                  >
+                    <i class="bi bi-award"></i> Start Certification
+                  </button>
+                {% else %}
+                  {% with has_progress=False %}
+                    {% for progress in my_progress %}
+                      {% if progress.certification_id == cert.id %}
+                      {% endif %}
+                    {% endfor %}
+                    {% if not has_progress %}
+                      <button
+                        class="btn btn-outline-primary btn-sm mt-3 enroll-cert-btn"
+                        data-cert-id="{{ cert.id }}"
+                        onclick="enrollInCertification('{{ cert.id }}')"
+                      >
+                        <i class="bi bi-award"></i> Start Certification
+                      </button>
+                    {% endif %}
+                  {% endwith %}
+                {% endif %}
+              {% elif not is_enrolled %}
+                <div class="alert alert-warning mt-3">
+                  <i class="bi bi-lock"></i> Enroll in the course to access certifications
+                </div>
               {% endif %}
             </div>
             {% endfor %}
           </div>
-          {% else %} {% if user.is_authenticated and user.role == 'instructor'
-          %} {% if course.instructor_id == user.id %}
+          {% else %}
+          {% if user.is_authenticated and user.role == 'instructor' %}
+          {% if course.instructor_id == user.id %}
           <div class="alert alert-info text-center">
             <i class="bi bi-info-circle"></i> No certifications created yet.
-            <a
-              href="{% url 'create_certification' course.id %}"
-              class="alert-link"
-              >Create your first certification</a
-            >
+            <a href="{% url 'create_certification' course.id %}" class="alert-link">Create your first certification</a>
           </div>
           {% else %}
           <div class="alert alert-info text-center">
-            <i class="bi bi-info-circle"></i> No certifications available for
-            this course yet.
+            <i class="bi bi-info-circle"></i> No certifications available for this course yet.
           </div>
-          {% endif %} {% else %}
+          {% endif %}
+          {% else %}
           <div class="alert alert-info text-center">
-            <i class="bi bi-info-circle"></i> No certifications available for
-            this course yet.
+            <i class="bi bi-info-circle"></i> No certifications available for this course yet.
           </div>
-          {% endif %} {% endif %}
+          {% endif %}
+          {% endif %}
         </div>
 
         <!-- Requirements -->
@@ -986,9 +984,10 @@ course.title }} - SmartCampus{% endblock %} {% block body_class
 
         if (response.ok) {
           alert(
-            "Successfully enrolled in certification! You can now start completing steps."
+            "Successfully enrolled in certification! Redirecting to certification steps..."
           );
-          window.location.reload();
+          // Redirect to certification steps page
+          window.location.href = `/certification/${certId}/steps/`;
         } else if (response.status === 401 || response.status === 403) {
           alert("Please log in to enroll in this certification");
           window.location.href = '{% url "login" %}?next={{ request.path }}';

@@ -22,7 +22,9 @@ from certifications.views import (
     MyBadgesView,
     
     # Public endpoints
-    VerifyBadgeView
+    VerifyBadgeView,
+    AIRecommendationsView,
+    InstructorCertificationRecommendationsView
 )
 
 urlpatterns = [
@@ -34,6 +36,7 @@ urlpatterns = [
     path('steps/<str:step_id>/update/', CertificationStepUpdateView.as_view(), name='certification-step-update'),
     path('steps/<str:step_id>/delete/', CertificationStepDeleteView.as_view(), name='certification-step-delete'),
     path('<str:certification_id>/students/progress/', CertificationStudentsProgressView.as_view(), name='certification-students-progress'),
+    path('instructor/recommendations/', InstructorCertificationRecommendationsView.as_view(), name='instructor-cert-recommendations'),
     
     # Student endpoints
     path('available/', AvailableCertificationsView.as_view(), name='certifications-available'),
@@ -46,4 +49,5 @@ urlpatterns = [
     
     # Public endpoints
     path('verify/<str:verification_code>/', VerifyBadgeView.as_view(), name='verify-badge'),
+    path('ai-recommendations/', AIRecommendationsView.as_view(), name='ai-recommendations'),
 ]

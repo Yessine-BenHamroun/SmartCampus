@@ -71,7 +71,20 @@ urlpatterns = [
     path('instructor/certification/<str:certification_id>/steps/', views.manage_certification_steps_view, name='manage_certification_steps'),
     path('instructor/certification/<str:certification_id>/steps/add/', views.add_certification_step_view, name='add_certification_step'),
     path('instructor/certification/step/<str:step_id>/delete/', views.delete_certification_step_view, name='delete_certification_step'),
+    path('instructor/certification/<str:certification_id>/exam/create/', views.create_certification_exam_view, name='create_certification_exam'),
+    
+    # Student Certification URLs
+    path('certification/<str:certification_id>/enroll/', views.enroll_in_certification, name='enroll_certification'),
+    path('certification/<str:certification_id>/steps/', views.certification_steps_view, name='certification_steps'),
+    path('certification/step/<str:step_id>/complete/', views.complete_certification_step, name='complete_certification_step'),
+    path('certification/<str:certification_id>/exam/submit/', views.submit_certification_exam, name='submit_certification_exam'),
+    path('certification/<str:certification_id>/exam/take/', views.take_certification_exam_view, name='take_certification_exam'),
+    path('my-certification-progress/', views.my_certification_progress_view, name='my_certification_progress'),
     path('my-badges/', views.my_badges_view, name='my_badges'),
+    path('verify-badge/<str:verification_code>/', views.verify_badge_view, name='verify_badge'),
+    path('certification-trends/', views.ai_certification_trends_view, name='certification_trends'),
+    path('instructor/certification-recommendations/', views.instructor_certification_recommendations_view, name='instructor_cert_recommendations'),
+    
     # Progress & Feedback URLs
     path('my-progress/', views.my_progress_view, name='my_progress'),
     path('course/<str:course_id>/progress/', views.course_progress_view, name='course_progress'),
