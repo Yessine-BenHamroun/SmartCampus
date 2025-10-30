@@ -174,6 +174,14 @@ function addMessage(data) {
     messageWrapper.appendChild(messageDiv);
     chatMessages.appendChild(messageWrapper);
     scrollToBottom();
+    
+    // Dispatcher l'événement pour l'analyse AI
+    window.dispatchEvent(new CustomEvent('messageAdded', {
+        detail: {
+            messageElement: messageDiv,
+            messageData: data
+        }
+    }));
 }
 
 function updateUserStatus(userId, username, status) {

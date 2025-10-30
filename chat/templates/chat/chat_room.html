@@ -11,6 +11,7 @@
     <link href="{% static 'vendor/bootstrap-icons/bootstrap-icons.css' %}" rel="stylesheet">
     <link href="{% static 'css/main.css' %}" rel="stylesheet">
     <link href="{% static 'chat/css/chat_room.css' %}" rel="stylesheet">
+    <link href="{% static 'chat/css/ai_sentiment.css' %}" rel="stylesheet">
     
     <style>
     /* Le CSS est dans chat_room.css - Forcer visibilité si nécessaire */
@@ -542,6 +543,51 @@
         </div>
     </div>
 
+    <!-- Bouton toggle AI -->
+    <button class="ai-toggle-btn" id="ai-toggle-btn" title="Analyse AI">
+        <i class="bi bi-robot"></i>
+    </button>
+
+    <!-- Panneau AI -->
+    <div class="ai-panel" id="ai-panel">
+        <div class="ai-panel-header">
+            <h6><i class="bi bi-robot"></i> Analyse AI du Chat</h6>
+            <button class="ai-panel-close" onclick="document.getElementById('ai-panel').classList.remove('show')">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="ai-panel-body">
+            <!-- Statistiques du salon -->
+            <div class="sentiment-stats" id="sentiment-stats">
+                <h6>📊 Statistiques du Salon</h6>
+                <div id="stats-container">
+                    <div class="text-center text-muted">
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">Chargement...</span>
+                        </div>
+                        <p class="text-sm mt-2">Analyse en cours...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bouton d'analyse complète -->
+            <button class="btn btn-primary w-100 mt-3" onclick="analyzeFullConversation()">
+                <i class="bi bi-graph-up"></i> Analyser la Conversation
+            </button>
+
+            <!-- Zone des insights -->
+            <div id="insights-container" class="mt-3"></div>
+
+            <!-- Toggle auto-analyse -->
+            <div class="form-check form-switch mt-3">
+                <input class="form-check-input" type="checkbox" id="auto-analyze-toggle" checked onchange="aiSentiment.toggleAutoAnalyze()">
+                <label class="form-check-label" for="auto-analyze-toggle">
+                    Auto-analyse des nouveaux messages
+                </label>
+            </div>
+        </div>
+    </div>
+
     <!-- Variables JavaScript -->
     <script>
         const roomSlug = '{{ room.slug }}';
@@ -653,5 +699,106 @@
     
     <!-- WebSocket Chat Logic -->
     <script src="{% static 'chat/js/chat.js' %}"></script>
+    
+    <!-- AI Sentiment Analysis -->
+    <script src="{% static 'chat/js/ai_sentiment.js' %}"></script>
+    <script>
+        // Initialiser l'analyse AI de sentiment
+        const aiSentiment = new ChatAISentiment('{{ room.slug }}');
+        
+        // Activer l'auto-analyse par défaut
+        aiSentiment.toggleAutoAnalyze();
+        
+        // Toggle panneau AI
+        document.getElementById('ai-toggle-btn').addEventListener('click', function() {
+            const panel = document.getElementById('ai-panel');
+            const isShowing = panel.classList.toggle('show');
+            
+            if (isShowing) {
+                // Charger les statistiques
+                loadRoomStats();
+            }
+        });
+        
+        // Fonction pour charger les statistiques du salon
+        function loadRoomStats() {
+            const container = document.getElementById('stats-container');
+            aiSentiment.getRoomStats().then(() => {
+                aiSentiment.displayRoomStats(container);
+            }).catch(error => {
+                container.innerHTML = '<p class="text-danger text-sm">Erreur lors du chargement des statistiques</p>';
+            });
+        }
+        
+        // Fonction pour analyser la conversation complète
+        function analyzeFullConversation() {
+            const btn = event.target.closest('button');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Analyse...';
+            
+            aiSentiment.analyzeConversation().then(() => {
+                const insightsContainer = document.getElementById('insights-container');
+                aiSentiment.displayInsights(insightsContainer);
+                
+                // Recharger aussi les stats
+                loadRoomStats();
+                
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }).catch(error => {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+                alert('Erreur lors de l\'analyse: ' + error.message);
+            });
+        }
+        
+        // Analyser les messages existants au chargement
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.message:not(.message-deleted)').forEach(message => {
+                const messageId = message.dataset.messageId;
+                const content = message.querySelector('.message-content').textContent;
+                
+                if (content && content.trim()) {
+                    aiSentiment.analyzeMessage(messageId, content).then(analysis => {
+                        if (analysis) {
+                            aiSentiment.displaySentiment(message, analysis);
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Hook pour analyser les nouveaux messages via WebSocket
+        // On intercepte la fonction addMessage globale pour ajouter l'analyse AI
+        window.addEventListener('load', () => {
+            // Attendre que chat.js soit chargé
+            if (typeof window.addMessage !== 'undefined') {
+                const originalAddMessage = window.addMessage;
+                
+                window.addMessage = function(data) {
+                    // Appeler la fonction originale pour ajouter le message au DOM
+                    originalAddMessage(data);
+                    
+                    // Analyser le nouveau message avec AI si auto-analyse activée
+                    if (aiSentiment && aiSentiment.autoAnalyze && data.message && !data.is_deleted) {
+                        setTimeout(() => {
+                            const messageElement = document.querySelector(`[data-message-id="${data.message_id}"]`);
+                            if (messageElement) {
+                                console.log('🤖 Analysing new message:', data.message_id);
+                                aiSentiment.analyzeMessage(data.message_id, data.message).then(analysis => {
+                                    if (analysis) {
+                                        aiSentiment.displaySentiment(messageElement, analysis);
+                                    }
+                                });
+                            }
+                        }, 200);
+                    }
+                };
+                
+                console.log('✅ AI analysis hooked to new messages');
+            }
+        });
+    </script>
 </body>
 </html>
