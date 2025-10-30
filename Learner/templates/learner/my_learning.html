@@ -46,7 +46,7 @@
             <i class="bi bi-check-circle"></i>
           </div>
           <div class="stat-content">
-            <h3>{% for course in enrolled_courses %}{% if course.progress == 100 %}1{% endif %}{% endfor %}0</h3>
+            <h3>{{ completed_courses|default:0 }}</h3>
             <p>Completed Courses</p>
           </div>
         </div>
@@ -57,7 +57,7 @@
             <i class="bi bi-clock-history"></i>
           </div>
           <div class="stat-content">
-            <h3>{% for course in enrolled_courses %}{% if course.progress > 0 and course.progress < 100 %}1{% endif %}{% endfor %}0</h3>
+            <h3>{{ in_progress_courses|default:0 }}</h3>
             <p>In Progress</p>
           </div>
         </div>
@@ -68,7 +68,7 @@
             <i class="bi bi-trophy"></i>
           </div>
           <div class="stat-content">
-            <h3>0</h3>
+            <h3>{{ certificates_earned|default:0 }}</h3>
             <p>Certificates Earned</p>
           </div>
         </div>
@@ -92,12 +92,14 @@
                     <img src="{% static 'img/education/courses-3.webp' %}" alt="{{ course.title }}" class="img-fluid">
                   {% endif %}
                   <div class="progress-overlay">
-                    <div class="progress">
-                      <div class="progress-bar" role="progressbar" style="width: {{ course.progress|default:0 }}%" 
-                           aria-valuenow="{{ course.progress|default:0 }}" aria-valuemin="0" aria-valuemax="100">
-                        {{ course.progress|default:0 }}%
+                    {% with completion=course.progress_info.completion_percentage|default:course.progress|default:0 %}
+                      <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: {{ completion }}%"
+                             aria-valuenow="{{ completion }}" aria-valuemin="0" aria-valuemax="100">
+                          {{ completion }}%
+                        </div>
                       </div>
-                    </div>
+                    {% endwith %}
                   </div>
                 </div>
                 <div class="learning-card-body">

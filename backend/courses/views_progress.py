@@ -10,7 +10,7 @@ from courses.models_progress import StudentProgress, CourseReview, InstructorRev
 from courses.serializers_progress import (
     StudentProgressSerializer, CourseReviewSerializer, InstructorReviewSerializer
 )
-from courses.models import Course
+from courses.models import Course, Enrollment
 from courses.extended_models import Lesson, Quiz, Assignment
 from users.models import User
 
@@ -63,24 +63,119 @@ def get_all_student_progress(request):
     """
     try:
         student_id = str(request.user.id)
-        
-        progress_list = StudentProgress.find_by_student(student_id)
-        
-        # Enrich with course details
+
+        # Fetch all recorded progress entries for this student
+        progress_records = StudentProgress.find_by_student(student_id)
+        progress_map = {}
+        for progress in progress_records:
+            progress_dict = progress.to_dict()
+
+            lessons_completed = progress_dict.get('lessons_completed') or []
+            quizzes_completed = progress_dict.get('quizzes_completed') or []
+            assignments_completed = progress_dict.get('assignments_completed') or []
+            time_spent_minutes = progress_dict.get('time_spent_minutes') or 0
+            completion_percentage = progress_dict.get('completion_percentage') or 0
+
+            course_id = progress_dict.get('course_id')
+            enrollment_id = progress_dict.get('enrollment_id')
+
+            progress_map[course_id] = {
+                'progress_id': progress_dict.get('_id'),
+                'course_id': course_id,
+                'enrollment_id': enrollment_id,
+                'completion_percentage': float(completion_percentage or 0),
+                'time_spent_minutes': int(time_spent_minutes or 0),
+                'lessons_completed': lessons_completed,
+                'quizzes_completed': quizzes_completed,
+                'assignments_completed': assignments_completed,
+                'last_accessed': progress_dict.get('last_accessed'),
+            }
+
+        # Fetch enrollments to ensure every course the student is taking appears
+        enrollments = Enrollment.find_by_student(student_id)
         enriched_progress = []
-        for progress in progress_list:
-            course = Course.find_by_id(str(progress.course_id))
-            if course:
-                progress_dict = progress.to_dict()
-                progress_dict['course_title'] = course.title
-                progress_dict['course_thumbnail'] = course.thumbnail_url
-                enriched_progress.append(progress_dict)
-        
+        processed_course_ids = set()
+
+        for enrollment in enrollments:
+            course_id = str(enrollment.course_id)
+            processed_course_ids.add(course_id)
+
+            course = Course.find_by_id(course_id)
+            course_title = course.title if course else 'Course'
+            course_thumbnail = getattr(course, 'thumbnail_url', None) if course else None
+
+            base_entry = progress_map.get(course_id, {
+                'progress_id': None,
+                'course_id': course_id,
+                'enrollment_id': str(enrollment.id) if enrollment.id else None,
+                'completion_percentage': 0.0,
+                'time_spent_minutes': 0,
+                'lessons_completed': [],
+                'quizzes_completed': [],
+                'assignments_completed': [],
+                'last_accessed': None,
+            })
+
+            entry = {
+                **base_entry,
+                'course_title': course_title,
+                'course_thumbnail': course_thumbnail,
+                'enrolled_at': enrollment.enrolled_at.isoformat() if enrollment.enrolled_at else None,
+                'enrollment_progress': float(enrollment.progress or 0),
+                'certificate_issued': bool(enrollment.certificate_issued),
+            }
+
+            entry['lessons_completed_count'] = len(entry['lessons_completed'] or [])
+            entry['quizzes_completed_count'] = len(entry['quizzes_completed'] or [])
+            entry['assignments_completed_count'] = len(entry['assignments_completed'] or [])
+            entry['time_spent_hours'] = round(entry['time_spent_minutes'] / 60, 2) if entry['time_spent_minutes'] else 0
+
+            enriched_progress.append(entry)
+
+        # Include standalone progress entries that may not have an active enrollment (edge cases)
+        for course_id, progress_entry in progress_map.items():
+            if course_id in processed_course_ids:
+                continue
+
+            course = Course.find_by_id(course_id)
+            course_title = course.title if course else 'Course'
+            course_thumbnail = getattr(course, 'thumbnail_url', None) if course else None
+
+            entry = {
+                **progress_entry,
+                'course_title': course_title,
+                'course_thumbnail': course_thumbnail,
+                'enrolled_at': None,
+                'enrollment_progress': 0.0,
+                'certificate_issued': False,
+                'lessons_completed_count': len(progress_entry['lessons_completed'] or []),
+                'quizzes_completed_count': len(progress_entry['quizzes_completed'] or []),
+                'assignments_completed_count': len(progress_entry['assignments_completed'] or []),
+                'time_spent_hours': round(progress_entry['time_spent_minutes'] / 60, 2) if progress_entry['time_spent_minutes'] else 0
+            }
+            enriched_progress.append(entry)
+
+        total_minutes = sum(entry['time_spent_minutes'] for entry in enriched_progress)
+        total_lessons = sum(entry['lessons_completed_count'] for entry in enriched_progress)
+        total_quizzes = sum(entry['quizzes_completed_count'] for entry in enriched_progress)
+        total_assignments = sum(entry['assignments_completed_count'] for entry in enriched_progress)
+        average_completion = round(
+            sum(entry['completion_percentage'] for entry in enriched_progress) / len(enriched_progress), 1
+        ) if enriched_progress else 0.0
+
         return Response({
             'progress': enriched_progress,
-            'total_courses': len(enriched_progress)
+            'total_courses': len(enriched_progress),
+            'totals': {
+                'time_spent_minutes': total_minutes,
+                'time_spent_hours': round(total_minutes / 60, 2) if total_minutes else 0,
+                'lessons_completed': total_lessons,
+                'quizzes_completed': total_quizzes,
+                'assignments_completed': total_assignments,
+                'average_completion_percentage': average_completion,
+            }
         })
-        
+
     except Exception as e:
         return Response({
             'error': 'Failed to fetch progress',
@@ -117,7 +212,6 @@ def update_lesson_progress(request, lesson_id):
         progress = StudentProgress.find_by_student_and_course(student_id, course_id)
         if not progress:
             # Create new progress record
-            from courses.extended_models import Enrollment
             enrollment = Enrollment.find_one(student_id, course_id)
             if not enrollment:
                 return Response({'error': 'Not enrolled in this course'}, 
@@ -126,7 +220,7 @@ def update_lesson_progress(request, lesson_id):
             progress = StudentProgress.create(
                 student_id=student_id,
                 course_id=course_id,
-                enrollment_id=str(enrollment._id)
+                enrollment_id=str(enrollment.id)
             )
         
         # Mark lesson complete
@@ -140,12 +234,18 @@ def update_lesson_progress(request, lesson_id):
         
         # Recalculate completion percentage
         from bson import ObjectId
-        # Convert course_id to ObjectId for MongoDB query
-        course_id_obj = ObjectId(course_id) if isinstance(course_id, str) else course_id
-        
-        total_lessons = Lesson.get_collection().count_documents({'course_id': course_id_obj})
-        total_quizzes = Quiz.get_collection().count_documents({'course_id': course_id_obj})
-        total_assignments = Assignment.get_collection().count_documents({'course_id': course_id_obj})
+
+        course_id_variants = {course_id}
+        if isinstance(course_id, str):
+            try:
+                course_id_variants.add(ObjectId(course_id))
+            except Exception:
+                pass
+
+        course_filter = {'$in': list(course_id_variants)}
+        total_lessons = Lesson.get_collection().count_documents({'course_id': course_filter})
+        total_quizzes = Quiz.get_collection().count_documents({'course_id': course_filter})
+        total_assignments = Assignment.get_collection().count_documents({'course_id': course_filter})
         
         progress.calculate_completion_percentage(total_lessons, total_quizzes, total_assignments)
         
@@ -180,7 +280,6 @@ def submit_course_review(request, course_id):
             return Response({'error': 'Course not found'}, status=status.HTTP_404_NOT_FOUND)
         
         # Check if student is enrolled
-        from courses.extended_models import Enrollment
         enrollment = Enrollment.find_one(student_id, course_id)
         if not enrollment:
             return Response({
@@ -296,7 +395,6 @@ def submit_instructor_review(request, instructor_id, course_id):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # Check if student is enrolled
-        from courses.extended_models import Enrollment
         enrollment = Enrollment.find_one(student_id, course_id)
         if not enrollment:
             return Response({
