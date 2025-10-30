@@ -1,5 +1,11 @@
 """
 User MongoDB Model
+
+This module defines the User model for managing user data in MongoDB.
+It provides functionality for user authentication, profile management,
+and password reset capabilities. The model supports different user roles
+(student, instructor, admin) and handles sensitive data like passwords
+with proper hashing.
 """
 from datetime import datetime
 from bson import ObjectId
@@ -8,8 +14,13 @@ from config.mongodb import get_collection
 
 
 class User:
-    """User model for MongoDB"""
+    """
+    User model for MongoDB that handles all user-related operations.
+    Supports multiple roles (student, instructor, admin) and provides
+    methods for authentication, profile updates, and account management.
+    """
     
+    # MongoDB collection name for user documents
     COLLECTION_NAME = 'users'
     
     def __init__(self, **kwargs):

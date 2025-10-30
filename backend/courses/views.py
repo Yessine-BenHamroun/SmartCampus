@@ -1,6 +1,9 @@
 """
-Course API views
+Course API views for managing courses, enrollments, and reviews.
+This module provides API endpoints for course CRUD operations, 
+student enrollments, progress tracking, and course reviews.
 """
+from datetime import datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
