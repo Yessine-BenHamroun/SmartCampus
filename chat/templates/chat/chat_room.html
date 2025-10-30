@@ -1,0 +1,657 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ room.name }} - SmartCampus Chat</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static 'vendor/bootstrap-icons/bootstrap-icons.css' %}" rel="stylesheet">
+    <link href="{% static 'css/main.css' %}" rel="stylesheet">
+    <link href="{% static 'chat/css/chat_room.css' %}" rel="stylesheet">
+    
+    <style>
+    /* Le CSS est dans chat_room.css - Forcer visibilité si nécessaire */
+    body {
+            background-color: #f5f5f5;
+        }
+        .chat-container {
+            height: calc(100vh - 120px);
+            display: flex;
+            margin-top: 20px;
+        }
+        .sidebar {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .chat-main {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .chat-messages > div {
+            width: 100%;
+            display: flex;
+        }
+        .message-wrapper-own {
+            justify-content: flex-end !important;
+        }
+        .message-wrapper-other {
+            justify-content: flex-start !important;
+        }
+        .message {
+            padding: 10px 14px 14px 14px !important;
+            border-radius: 15px;
+            max-width: 60%;
+            word-wrap: break-word;
+            word-break: break-word;
+            animation: fadeIn 0.3s ease-out;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            overflow: visible !important;
+            position: relative !important;
+        }
+        @keyframes fadeIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(10px) scale(0.95);
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1);
+            }
+        }
+        .message-own {
+            background: white !important;
+            color: #333 !important;
+            border-bottom-right-radius: 4px;
+            border-left: 4px solid #667eea !important;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2) !important;
+        }
+        .message-own .message-header strong {
+            color: #667eea !important;
+        }
+        .message-own .message-content {
+            color: #333 !important;
+        }
+        .message-own .message-time {
+            color: #666 !important;
+        }
+        .message-other {
+            background-color: white;
+            color: #212529;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+        .message-header {
+            margin-bottom: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-align: left;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .message-other .message-header strong {
+            color: #667eea;
+        }
+        .message-content {
+            font-size: 0.95rem;
+            line-height: 1.4;
+            margin: 6px 0;
+            word-break: break-word;
+        }
+        .message-time {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 4px;
+            display: block;
+            text-align: right;
+        }
+        .message-other .message-time {
+            color: #6c757d;
+        }
+        .message-own .message-time {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .message-footer {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            margin-top: 8px !important;
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+        }
+        .message-actions {
+            display: flex !important;
+            gap: 6px !important;
+            flex-wrap: wrap !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        .btn-action {
+            background: #ffffff !important;
+            border: 2px solid #667eea !important;
+            color: #333333 !important;
+            cursor: pointer !important;
+            padding: 8px 14px !important;
+            font-size: 0.85rem !important;
+            font-weight: 700 !important;
+            transition: all 0.2s !important;
+            border-radius: 8px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            white-space: nowrap !important;
+            position: relative !important;
+            z-index: 100 !important;
+            margin: 2px !important;
+        }
+        .btn-action i {
+            font-size: 1rem !important;
+        }
+        .btn-action:hover {
+            transform: translateY(-2px) scale(1.05) !important;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3) !important;
+        }
+        .btn-edit {
+            background: #2196F3 !important;
+            border-color: #1976D2 !important;
+            color: #ffffff !important;
+        }
+        .btn-edit:hover {
+            background: #1976D2 !important;
+            color: white !important;
+            border-color: #0D47A1 !important;
+        }
+        .btn-delete {
+            background: #f44336 !important;
+            border-color: #D32F2F !important;
+            color: #ffffff !important;
+        }
+        .btn-delete:hover {
+            background: #D32F2F !important;
+            color: white !important;
+            border-color: #B71C1C !important;
+        }
+        .message-other .message-actions {
+            display: none !important;
+        }
+        
+        /* Menu déroulant moderne à 3 points */
+        .message-menu {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .message-menu-btn {
+            background: transparent !important;
+            border: none !important;
+            cursor: pointer !important;
+            padding: 6px !important;
+            font-size: 20px !important;
+            color: #666 !important;
+            border-radius: 50% !important;
+            transition: all 0.2s ease !important;
+            width: 32px;
+            height: 32px;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        
+        .message-menu-btn:hover {
+            background: rgba(0,0,0,0.08) !important;
+            color: #333 !important;
+        }
+        
+        .message-dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            min-width: 180px;
+            z-index: 1000;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        
+        .message-dropdown.show {
+            display: block !important;
+            animation: dropdownSlide 0.2s ease;
+        }
+        
+        @keyframes dropdownSlide {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .dropdown-item {
+            display: flex !important;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px !important;
+            border: none !important;
+            background: white !important;
+            width: 100%;
+            text-align: left;
+            cursor: pointer !important;
+            font-size: 14px !important;
+            color: #333 !important;
+            transition: background 0.15s ease !important;
+            font-weight: 500;
+        }
+        
+        .dropdown-item:hover {
+            background: #f5f5f5 !important;
+        }
+        
+        .dropdown-item i {
+            font-size: 16px;
+            width: 20px;
+        }
+        
+        .dropdown-item.edit-item i {
+            color: #2196F3;
+        }
+        
+        .dropdown-item.delete-item {
+            color: #f44336 !important;
+        }
+        
+        .dropdown-item.delete-item:hover {
+            background: #ffebee !important;
+        }
+        
+        /* Styles pour l'édition */
+        .edit-mode {
+            background: #fffef7 !important;
+            border: 2px solid #2196F3 !important;
+        }
+        
+        .message-content[contenteditable="true"] {
+            outline: none !important;
+            padding: 8px;
+            border-radius: 4px;
+            min-height: 40px;
+        }
+        
+        .message-content[contenteditable="true"]:focus {
+            background: #fff !important;
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+        }
+        
+        .edit-actions {
+            margin-top: 10px !important;
+            display: flex !important;
+            gap: 8px !important;
+        }
+        .message-own .message-actions {
+            display: flex !important;
+        }
+        .edited-label {
+            font-style: italic;
+            font-size: 0.65rem;
+            opacity: 0.8;
+            margin-left: 4px;
+        }
+        .message-content[contenteditable="true"] {
+            outline: 2px solid #667eea;
+            outline-offset: 2px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .message-deleted {
+            opacity: 0.6;
+        }
+        .deleted-content {
+            font-style: italic;
+            color: #6c757d !important;
+        }
+        .message-own.message-deleted {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+        }
+        .message-other.message-deleted {
+            background-color: #f8f9fa;
+            border-color: #dee2e6;
+        }
+        .chat-input {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #dee2e6;
+            border-radius: 0 0 10px 10px;
+        }
+        .chat-input form {
+            display: flex;
+            gap: 10px;
+        }
+        .chat-input input {
+            flex: 1;
+            border-radius: 25px;
+            padding: 12px 20px;
+            border: 1px solid #dee2e6;
+        }
+        .chat-input input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .chat-input button {
+            border-radius: 25px;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+        .participant-item {
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-online {
+            background-color: #28a745;
+            box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2);
+        }
+        .status-offline {
+            background-color: #6c757d;
+        }
+        .typing-indicator {
+            padding: 10px 20px;
+            font-style: italic;
+            color: #6c757d;
+            font-size: 0.9rem;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+        }
+        .chat-messages::-webkit-scrollbar-track {
+            background-color: #f1f1f1;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-light bg-white shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'chat:room_list' %}">
+                <i class="bi bi-arrow-left"></i> Retour aux salons
+            </a>
+            <span class="navbar-text">
+                Connecté en tant que <strong>{{ user.username }}</strong>
+            </span>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row chat-container">
+            <!-- Sidebar - Liste des participants -->
+            <div class="col-md-3">
+                <div class="sidebar">
+                    <h5 class="mb-3">
+                        <i class="bi bi-people-fill"></i> Participants 
+                        <span class="badge bg-primary">{{ participants_count }}</span>
+                    </h5>
+                    <div id="participants-list">
+                        {% for participant in online_participants %}
+                        <div class="participant-item" data-user-id="{{ participant.id }}">
+                            <span class="status-indicator status-online"></span>
+                            <span class="username">
+                                {% if participant.first_name or participant.last_name %}
+                                    {{ participant.first_name }} {{ participant.last_name }}
+                                {% else %}
+                                    {{ participant.username }}
+                                {% endif %}
+                            </span>
+                            {% if participant == user %}
+                                <small class="text-muted">(vous)</small>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Zone de chat principale -->
+            <div class="col-md-9">
+                <div class="chat-main">
+                    <!-- En-tête du chat -->
+                    <div class="chat-header">
+                        <h4><i class="bi bi-chat-dots-fill"></i> {{ room.name }}</h4>
+                        {% if room.description %}
+                            <small>{{ room.description }}</small>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Messages -->
+                    <div class="chat-messages" id="chat-messages">
+                        {% for message in messages %}
+                        <div class="{% if message.sender == user %}message-wrapper-own{% else %}message-wrapper-other{% endif %}">
+                            <div class="message {% if message.sender == user %}message-own{% else %}message-other{% endif %} {% if message.is_deleted %}message-deleted{% endif %}" 
+                                 data-message-id="{{ message.id }}"
+                                 data-sender-id="{{ message.sender.id }}">
+                                {% if message.is_deleted %}
+                                    <div class="message-content deleted-content">
+                                        <i class="bi bi-trash"></i>
+                                        {% if message.sender.first_name or message.sender.last_name %}
+                                            {{ message.sender.first_name }} {{ message.sender.last_name }}
+                                        {% else %}
+                                            {{ message.sender.username }}
+                                        {% endif %}
+                                        a supprimé ce message
+                                    </div>
+                                    <div class="message-time">{{ message.timestamp|date:'H:i' }}</div>
+                                {% else %}
+                                    <div class="message-header">
+                                        <strong>
+                                            {% if message.sender.first_name or message.sender.last_name %}
+                                                {{ message.sender.first_name }} {{ message.sender.last_name }}
+                                            {% else %}
+                                                {{ message.sender.username }}
+                                            {% endif %}
+                                        </strong>
+                                    </div>
+                                    <div class="message-content" id="content-{{ message.id }}">{{ message.content }}</div>
+                                    <div class="message-footer">
+                                        <div class="message-time">
+                                            {{ message.timestamp|date:'H:i' }}
+                                            {% if message.is_edited %}
+                                            <span class="edited-label">(modifié)</span>
+                                            {% endif %}
+                                        </div>
+                                        {% if message.sender == user %}
+                                        <div class="message-actions">
+                                            <div class="message-menu">
+                                                <button class="message-menu-btn" onclick="toggleMenu({{ message.id }}, event)" title="Options">
+                                                    <i class="bi bi-three-dots-vertical"></i>
+                                                </button>
+                                                <div class="message-dropdown" id="menu-{{ message.id }}">
+                                                    <button class="dropdown-item edit-item" onclick="editMessage({{ message.id }}, event)">
+                                                        <i class="bi bi-pencil"></i> Modifier
+                                                    </button>
+                                                    <button class="dropdown-item delete-item" onclick="deleteMessage({{ message.id }}, event)">
+                                                        <i class="bi bi-trash"></i> Supprimer
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Indicateur de frappe -->
+                    <div class="typing-indicator" id="typing-indicator" style="display: none;">
+                        <i class="bi bi-three-dots"></i>
+                        <span id="typing-username"></span> est en train d'écrire...
+                    </div>
+                    
+                    <!-- Zone de saisie -->
+                    <div class="chat-input">
+                        <form id="chat-form">
+                            <input type="text" 
+                                   id="chat-message-input" 
+                                   class="form-control" 
+                                   placeholder="Tapez votre message..." 
+                                   autocomplete="off"
+                                   autofocus>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send-fill"></i> Envoyer
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Variables JavaScript -->
+    <script>
+        const roomSlug = '{{ room.slug }}';
+        const currentUser = '{{ user.username }}';
+        const currentUserId = {{ user_id|default:"null" }};
+        
+        // Debug - afficher les variables
+        console.log('🔑 Variables chat:', {
+            roomSlug: roomSlug,
+            currentUser: currentUser,
+            currentUserId: currentUserId
+        });
+        
+        // Fonction pour toggle le menu déroulant
+        function toggleMenu(messageId, event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const menu = document.getElementById(`menu-${messageId}`);
+            const allMenus = document.querySelectorAll('.message-dropdown');
+            
+            // Fermer tous les autres menus
+            allMenus.forEach(m => {
+                if (m !== menu) {
+                    m.classList.remove('show');
+                }
+            });
+            
+            // Toggle le menu actuel
+            menu.classList.toggle('show');
+        }
+        
+        // Fermer les menus au clic ailleurs
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.message-menu')) {
+                document.querySelectorAll('.message-dropdown').forEach(menu => {
+                    menu.classList.remove('show');
+                });
+            }
+        });
+        
+        // Ajouter les boutons aux anciens messages qui n'en ont pas
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('🔧 Ajout des boutons aux anciens messages...');
+            
+            document.querySelectorAll('.message-own').forEach(messageDiv => {
+                const messageId = messageDiv.dataset.messageId;
+                const senderId = messageDiv.dataset.senderId;
+                
+                // Vérifier si le message est le nôtre et n'a pas déjà de boutons
+                if (parseInt(senderId) === currentUserId && !messageDiv.querySelector('.message-actions')) {
+                    console.log('➕ Ajout des boutons au message:', messageId);
+                    
+                    // Chercher ou créer le message-footer
+                    let footer = messageDiv.querySelector('.message-footer');
+                    if (!footer) {
+                        footer = document.createElement('div');
+                        footer.className = 'message-footer';
+                        
+                        // Déplacer le message-time dans le footer si il existe
+                        const timeDiv = messageDiv.querySelector('.message-time');
+                        if (timeDiv) {
+                            footer.appendChild(timeDiv);
+                        }
+                        
+                        messageDiv.appendChild(footer);
+                    }
+                    
+                    // Ajouter le menu à 3 points
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'message-actions';
+                    actionsDiv.innerHTML = `
+                        <div class="message-menu">
+                            <button class="message-menu-btn" onclick="toggleMenu(${messageId}, event)" title="Options">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <div class="message-dropdown" id="menu-${messageId}">
+                                <button class="dropdown-item edit-item" onclick="editMessage(${messageId}, event)">
+                                    <i class="bi bi-pencil"></i> Modifier
+                                </button>
+                                <button class="dropdown-item delete-item" onclick="deleteMessage(${messageId}, event)">
+                                    <i class="bi bi-trash"></i> Supprimer
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    footer.appendChild(actionsDiv);
+                    console.log('✅ Menu ajouté au message:', messageId);
+                }
+            });
+            
+            console.log('✅ Vérification terminée');
+        });
+    </script>
+    
+    <!-- Bootstrap JS -->
+    <script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+    
+    <!-- WebSocket Chat Logic -->
+    <script src="{% static 'chat/js/chat.js' %}"></script>
+</body>
+</html>

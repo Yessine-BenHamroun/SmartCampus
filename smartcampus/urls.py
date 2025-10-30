@@ -22,6 +22,7 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('Learner.urls')),
+    path('chat/', include('chat.urls')),  # URLs pour le chat en temps réel
 ]
 
 # Serve static and media files in development

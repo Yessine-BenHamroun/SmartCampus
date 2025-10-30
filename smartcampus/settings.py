@@ -36,16 +36,19 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(','
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',  # Doit être en PREMIER pour ASGI
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',  # Pour WebSocket
     'django_otp',
     'django_otp.plugins.otp_totp',
     'django_otp.plugins.otp_static',
     'Learner',  # Our learner app
+    'chat',  # App de chat en temps réel
 ]
 
 MIDDLEWARE = [
@@ -55,6 +58,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'Learner.middleware.SessionAuthMiddleware',  # Sync session auth with Django auth
     'django_otp.middleware.OTPMiddleware',  # 2FA middleware
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -170,4 +174,19 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'SmartCampus <noreply@
 
 # Backend API URL for authentication
 BACKEND_API_URL = os.environ.get('BACKEND_API_URL', 'http://localhost:8001/api')
+
+# ==============================================================================
+# DJANGO CHANNELS CONFIGURATION (WebSocket support)
+# ==============================================================================
+
+# Configuration ASGI pour Channels
+ASGI_APPLICATION = 'smartcampus.asgi.application'
+
+# Configuration des Channel Layers SANS Redis (Backend en mémoire)
+# Parfait pour le développement - pas besoin d'installer Redis !
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 
