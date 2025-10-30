@@ -1,11 +1,6 @@
-{% extends 'learner/base.html' %}
-{% load static %}
-
-{% block title %}{{ course.title }} - SmartCampus{% endblock %}
-
-{% block body_class %}course-detail-page{% endblock %}
-
-{% block content %}
+{% extends 'learner/base.html' %} {% load static %} {% block title %}{{
+course.title }} - SmartCampus{% endblock %} {% block body_class
+%}course-detail-page{% endblock %} {% block content %}
 <!-- Page Header -->
 <section class="page-header section light-background">
   <div class="container">
@@ -221,13 +216,55 @@
                 {% endif %}
               </div>
 
+              <!-- Instructor Actions -->
+              {% if user.role == 'instructor' and course.instructor_id ==
+              user.id %}
+              <div class="cert-instructor-actions mt-3">
+                <div class="btn-group w-100" role="group">
+                  <a
+                    href="{% url 'certification_detail' cert.id %}"
+                    class="btn btn-sm btn-outline-info"
+                    title="View Details"
+                  >
+                    <i class="bi bi-eye"></i> View
+                  </a>
+                  <a
+                    href="{% url 'edit_certification' cert.id %}"
+                    class="btn btn-sm btn-outline-primary"
+                    title="Edit Certification"
+                  >
+                    <i class="bi bi-pencil"></i> Edit
+                  </a>
+                  <a
+                    href="{% url 'manage_certification_steps' cert.id %}"
+                    class="btn btn-sm btn-outline-success"
+                    title="Manage Steps"
+                  >
+                    <i class="bi bi-list-check"></i> Steps
+                  </a>
+                  <button
+                    onclick="confirmDeleteCertification('{{ cert.id }}')"
+                    class="btn btn-sm btn-outline-danger"
+                    title="Delete Certification"
+                  >
+                    <i class="bi bi-trash"></i> Delete
+                  </button>
+                </div>
+              </div>
+              {% endif %}
+
               <!-- Check if user has progress in this certification -->
               {% if my_progress %} {% for progress in my_progress %} {% if
               progress.certification_id == cert.id %}
               <div class="cert-progress">
                 <div class="progress-info">
-                  <span>Progress: {{ progress.current_step }}/{{ cert.total_steps }} steps</span>
-                  <span class="badge {% if progress.status == 'completed' %}bg-success{% elif progress.status == 'in_progress' %}bg-primary{% elif progress.status == 'failed' %}bg-danger{% else %}bg-secondary{% endif %}">
+                  <span
+                    >Progress: {{ progress.current_step }}/{{ cert.total_steps
+                    }} steps</span
+                  >
+                  <span
+                    class="badge {% if progress.status == 'completed' %}bg-success{% elif progress.status == 'in_progress' %}bg-primary{% elif progress.status == 'failed' %}bg-danger{% else %}bg-secondary{% endif %}"
+                  >
                     {{ progress.status|title }}
                   </span>
                 </div>
@@ -255,8 +292,8 @@
               {% endif %} {% endfor %} {% endif %}
 
               <!-- Show enrollment button if not enrolled in certification -->
-              {% if is_enrolled and cert.is_active %}
-              {% if not my_progress or not my_progress|length %}
+              {% if is_enrolled and cert.is_active %} {% if not my_progress or
+              not my_progress|length %}
               <button
                 class="btn btn-outline-primary btn-sm mt-3 enroll-cert-btn"
                 data-cert-id="{{ cert.id }}"
@@ -264,14 +301,10 @@
               >
                 <i class="bi bi-award"></i> Start Certification
               </button>
-              {% else %}
-              {% with has_progress=False %}
-              {% for progress in my_progress %}
-              {% if progress.certification_id == cert.id %}
-              {% with has_progress=True %}{% endwith %}
-              {% endif %}
-              {% endfor %}
-              {% if not has_progress %}
+              {% else %} {% with has_progress=False %} {% for progress in
+              my_progress %} {% if progress.certification_id == cert.id %} {%
+              with has_progress=True %}{% endwith %} {% endif %} {% endfor %} {%
+              if not has_progress %}
               <button
                 class="btn btn-outline-primary btn-sm mt-3 enroll-cert-btn"
                 data-cert-id="{{ cert.id }}"
@@ -289,8 +322,7 @@
             {% endfor %}
           </div>
           {% else %} {% if user.is_authenticated and user.role == 'instructor'
-          %} {% if course.instructor_id == user.id or course.instructor_id ==
-          user.email %}
+          %} {% if course.instructor_id == user.id %}
           <div class="alert alert-info text-center">
             <i class="bi bi-info-circle"></i> No certifications created yet.
             <a
@@ -358,26 +390,21 @@
             <div class="price">${{ course.price }}</div>
             {% else %}
             <div class="price free">Free</div>
-            {% endif %}
-            
-            {% if user.role == 'instructor' %}
-              <div class="alert alert-info">
-                <i class="bi bi-info-circle"></i> You are viewing this as an instructor. 
-                {% if course.instructor_id == user.id %}
-                  <a href="{% url 'edit_course' course.id %}" class="btn btn-sm btn-primary mt-2 w-100">
-                    <i class="bi bi-pencil"></i> Edit This Course
-                  </a>
-                {% endif %}
-              </div>
-            {% elif is_enrolled %}
-              <a href="{% url 'course_learning' course.id %}" class="btn btn-success btn-lg w-100">
-                <i class="bi bi-play-circle"></i> Continue Learning
+            {% endif %} {% if user.role == 'instructor' %}
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle"></i> You are viewing this as an
+              instructor. {% if course.instructor_id == user.id %}
+              <a
+                href="{% url 'edit_course' course.id %}"
+                class="btn btn-sm btn-primary mt-2 w-100"
+              >
+                <i class="bi bi-pencil"></i> Edit This Course
               </a>
               {% endif %}
             </div>
             {% elif is_enrolled %}
             <a
-              href="{% url 'my_learning' %}"
+              href="{% url 'course_learning' course.id %}"
               class="btn btn-success btn-lg w-100 mb-2"
             >
               <i class="bi bi-play-circle"></i> Continue Learning
@@ -386,7 +413,6 @@
               <i class="bi bi-check-circle"></i> You're enrolled!
             </p>
             {% else %}
-<<<<<<< HEAD
             <button
               id="enrollBtn"
               class="btn btn-primary btn-lg w-100 mb-2"
@@ -394,12 +420,6 @@
             >
               <i class="bi bi-bookmark-plus"></i> Enroll Now
             </button>
-=======
-              <button id="enrollBtn" class="btn btn-primary btn-lg w-100" onclick="enrollInCourse()">
-                <i class="bi bi-bookmark-plus"></i> Start Learning
-              </button>
-              <p class="text-center text-muted">30-Day Money-Back Guarantee</p>
->>>>>>> 30d1cdd8992764a11019f7d1f8bfbc8eb1300aee
             {% endif %}
           </div>
 
@@ -815,6 +835,21 @@
     border-top: 1px solid #dee2e6;
   }
 
+  .cert-instructor-actions {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #dee2e6;
+  }
+
+  .cert-instructor-actions .btn-group {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+  }
+
+  .cert-instructor-actions .btn {
+    font-size: 0.85rem;
+  }
+
   .progress-info {
     display: flex;
     justify-content: space-between;
@@ -828,133 +863,146 @@
 </style>
 
 <script>
-// Debug: Log authentication status on page load
-console.log('=== COURSE DETAIL PAGE DEBUG ===');
-console.log('Is Authenticated:', {{ is_authenticated|yesno:"true,false" }});
-console.log('Current User:', '{% if current_user %}{{ current_user.email|default:"Unknown" }}{% else %}None{% endif %}');
-console.log('Access Token Exists:', '{{ request.session.access_token }}' ? 'Yes' : 'No');
-console.log('Access Token Length:', '{{ request.session.access_token }}'.length);
-console.log('Access Token (first 50 chars):', '{{ request.session.access_token }}'.substring(0, 50));
-console.log('Is Enrolled:', {{ is_enrolled|yesno:"true,false" }});
-console.log('================================');
-
-const courseId = '{{ course.id }}';
-
-  async function enrollInCourse() {
-    const enrollBtn = document.getElementById("enrollBtn");
-    enrollBtn.disabled = true;
-    enrollBtn.innerHTML =
-      '<span class="spinner-border spinner-border-sm me-2"></span>Enrolling...';
-
-  // Debug: Check if token exists
-  let token = '{{ request.session.access_token }}';
-  const refreshToken = '{{ request.session.refresh_token }}';
-  console.log('Access token exists:', token ? 'Yes' : 'No');
-  console.log('Token length:', token.length);
-  
-  if (!token || token.length === 0) {
-    alert('You must be logged in to enroll. Please log in first.');
-    window.location.href = '{% url "login" %}?next={{ request.path }}';
-    return;
+  // Delete certification confirmation
+  function confirmDeleteCertification(certId) {
+    if (confirm('Are you sure you want to delete this certification? This action cannot be undone and will delete all associated steps and student progress.')) {
+      window.location.href = `/instructor/certification/${certId}/delete/`;
+    }
   }
 
-  try {
-    // First, try to refresh the token to ensure it's valid
-    console.log('Attempting to refresh token...');
+  // Debug: Log authentication status on page load
+  console.log('=== COURSE DETAIL PAGE DEBUG ===');
+  console.log('Is Authenticated:', {{ is_authenticated|yesno:"true,false" }});
+  console.log('Current User:', '{% if current_user %}{{ current_user.email|default:"Unknown" }}{% else %}None{% endif %}');
+  console.log('Access Token Exists:', '{{ request.session.access_token }}' ? 'Yes' : 'No');
+  console.log('Access Token Length:', '{{ request.session.access_token }}'.length);
+  console.log('Access Token (first 50 chars):', '{{ request.session.access_token }}'.substring(0, 50));
+  console.log('Is Enrolled:', {{ is_enrolled|yesno:"true,false" }});
+  console.log('================================');
+
+  const courseId = '{{ course.id }}';
+
+    async function enrollInCourse() {
+      const enrollBtn = document.getElementById("enrollBtn");
+      enrollBtn.disabled = true;
+      enrollBtn.innerHTML =
+        '<span class="spinner-border spinner-border-sm me-2"></span>Enrolling...';
+
+    // Debug: Check if token exists
+    let token = '{{ request.session.access_token }}';
+    const refreshToken = '{{ request.session.refresh_token }}';
+    console.log('Access token exists:', token ? 'Yes' : 'No');
+    console.log('Token length:', token.length);
+
+    if (!token || token.length === 0) {
+      alert('You must be logged in to enroll. Please log in first.');
+      window.location.href = '{% url "login" %}?next={{ request.path }}';
+      return;
+    }
+
     try {
-      const refreshResponse = await fetch('http://localhost:8001/api/token/refresh/', {
+      // First, try to refresh the token to ensure it's valid
+      console.log('Attempting to refresh token...');
+      try {
+        const refreshResponse = await fetch('http://localhost:8001/api/token/refresh/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            refresh: refreshToken
+          })
+        });
+
+        if (refreshResponse.ok) {
+          const refreshData = await refreshResponse.json();
+          token = refreshData.access;
+          console.log('Token refreshed successfully');
+
+          // Update session token via a hidden form or AJAX call to backend
+          // For now, we'll use the new token directly
+        } else {
+          console.log('Token refresh failed, using existing token');
+        }
+      } catch (refreshError) {
+        console.log('Token refresh error:', refreshError);
+      }
+
+      // Now try to enroll with the token
+      const response = await fetch(`http://localhost:8001/api/courses/${courseId}/enroll/`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          refresh: refreshToken
-        })
-      });
-      
-      if (refreshResponse.ok) {
-        const refreshData = await refreshResponse.json();
-        token = refreshData.access;
-        console.log('Token refreshed successfully');
-        
-        // Update session token via a hidden form or AJAX call to backend
-        // For now, we'll use the new token directly
-      } else {
-        console.log('Token refresh failed, using existing token');
-      }
-    } catch (refreshError) {
-      console.log('Token refresh error:', refreshError);
-    }
-    
-    // Now try to enroll with the token
-    const response = await fetch(`http://localhost:8001/api/courses/${courseId}/enroll/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-      }
-    });
-
-    const data = await response.json();
-    
-    console.log('Enrollment Response Status:', response.status);
-    console.log('Enrollment Response Data:', data);
-
-    if (response.ok) {
-      alert('Successfully enrolled in the course!');
-      window.location.href = '{% url "course_learning" course.id %}';
-    } else if (response.status === 401 || response.status === 403) {
-      console.error('Authentication error:', data);
-      alert('Authentication failed: ' + (data.detail || data.error || 'Please log in again'));
-      window.location.href = '{% url "login" %}?next={{ request.path }}';
-    } else {
-      alert(data.error || 'Failed to enroll in course');
-      enrollBtn.disabled = false;
-      enrollBtn.innerHTML =
-        '<i class="bi bi-bookmark-plus"></i> Start Learning';
-    }
-  }
-
-  async function enrollInCertification(certId) {
-    const button = event.target;
-    const originalHTML = button.innerHTML;
-    button.disabled = true;
-    button.innerHTML =
-      '<span class="spinner-border spinner-border-sm me-2"></span>Enrolling...';
-
-    try {
-      const response = await fetch(
-        `http://localhost:8001/api/certifications/${certId}/enroll/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer {{ request.session.access_token }}",
-          },
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
         }
-      );
+      });
 
       const data = await response.json();
 
+      console.log('Enrollment Response Status:', response.status);
+      console.log('Enrollment Response Data:', data);
+
       if (response.ok) {
-        alert(
-          "Successfully enrolled in certification! You can now start completing steps."
-        );
-        window.location.reload();
+        alert('Successfully enrolled in the course!');
+        window.location.href = '{% url "course_learning" course.id %}';
       } else if (response.status === 401 || response.status === 403) {
-        alert("Please log in to enroll in this certification");
+        console.error('Authentication error:', data);
+        alert('Authentication failed: ' + (data.detail || data.error || 'Please log in again'));
         window.location.href = '{% url "login" %}?next={{ request.path }}';
       } else {
-        alert(data.error || "Failed to enroll in certification");
+        alert(data.error || 'Failed to enroll in course');
+        enrollBtn.disabled = false;
+        enrollBtn.innerHTML =
+          '<i class="bi bi-bookmark-plus"></i> Start Learning';
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('An error occurred. Please try again.');
+      enrollBtn.disabled = false;
+      enrollBtn.innerHTML = '<i class="bi bi-bookmark-plus"></i> Start Learning';
+    }
+  }
+
+    async function enrollInCertification(certId) {
+      const button = event.target;
+      const originalHTML = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML =
+        '<span class="spinner-border spinner-border-sm me-2"></span>Enrolling...';
+
+      try {
+        const response = await fetch(
+          `http://localhost:8001/api/certifications/${certId}/enroll/`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer {{ request.session.access_token }}",
+            },
+          }
+        );
+
+        const data = await response.json();
+
+        if (response.ok) {
+          alert(
+            "Successfully enrolled in certification! You can now start completing steps."
+          );
+          window.location.reload();
+        } else if (response.status === 401 || response.status === 403) {
+          alert("Please log in to enroll in this certification");
+          window.location.href = '{% url "login" %}?next={{ request.path }}';
+        } else {
+          alert(data.error || "Failed to enroll in certification");
+          button.disabled = false;
+          button.innerHTML = originalHTML;
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        alert("An error occurred. Please try again.");
         button.disabled = false;
         button.innerHTML = originalHTML;
       }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("An error occurred. Please try again.");
-      button.disabled = false;
-      button.innerHTML = originalHTML;
     }
-  }
 </script>
 {% endblock %}

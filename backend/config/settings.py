@@ -143,7 +143,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # MongoDB Configuration
 MONGODB_SETTINGS = {
     'host': os.getenv('MONGO_URI', 'mongodb://localhost:27017/'),
-    'db_name': os.getenv('MONGO_DB_NAME', 'smartcampus_db'),
+    'db_name': os.getenv('MONGO_DB_NAME', 'smartcampus_db'),  # Keep using smartcampus_db
 }
 
 # REST Framework Configuration

@@ -879,6 +879,43 @@ def edit_course_view(request, course_id):
     return render(request, 'learner/edit_course.html', context)
 
 
+@api_login_required
+def delete_course_view(request, course_id):
+    """Delete a course (Instructor only)"""
+    import requests
+    
+    user = get_current_user(request)
+    
+    # Check if user has instructor or admin role
+    user_role = user.get('role', 'student')
+    if user_role not in ['instructor', 'admin']:
+        messages.error(request, 'Access denied. Instructor privileges required.')
+        return redirect('index')
+    
+    access_token = get_access_token(request)
+    
+    try:
+        # Delete course via backend API
+        response = requests.delete(
+            f'http://localhost:8001/api/courses/instructor/course/{course_id}/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        
+        if response.status_code == 200:
+            messages.success(request, 'Course deleted successfully!')
+        elif response.status_code == 404:
+            messages.error(request, 'Course not found')
+        elif response.status_code == 403:
+            messages.error(request, 'You do not have permission to delete this course')
+        else:
+            error_data = response.json()
+            messages.error(request, error_data.get('error', 'Failed to delete course'))
+    except Exception as e:
+        messages.error(request, f'Error deleting course: {str(e)}')
+    
+    return redirect('instructor_courses')
+
+
 # Quiz Views
 
 @api_login_required
@@ -1129,6 +1166,220 @@ def create_certification_view(request, course_id):
     }
     
     return render(request, 'learner/create_certification.html', context)
+
+
+@api_login_required
+def edit_certification_view(request, certification_id):
+    """Edit certification (Instructor only)"""
+    import requests
+    
+    user = get_current_user(request)
+    user_role = user.get('role', 'student')
+    
+    if user_role not in ['instructor', 'admin']:
+        messages.error(request, 'Access denied. Instructor privileges required.')
+        return redirect('index')
+    
+    access_token = get_access_token(request)
+    certification = None
+    course = None
+    
+    try:
+        # Fetch all certifications to find the one to edit
+        cert_response = requests.get(
+            'http://localhost:8001/api/certifications/available/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        
+        if cert_response.status_code == 200:
+            cert_data = cert_response.json()
+            all_certs = cert_data.get('certifications', [])
+            certification = next((c for c in all_certs if c.get('id') == certification_id), None)
+            
+            if not certification:
+                messages.error(request, 'Certification not found')
+                return redirect('instructor_courses')
+            
+            # Fetch course details
+            course_id = certification.get('course_id')
+            if course_id:
+                course_response = requests.get(
+                    f'http://localhost:8001/api/courses/{course_id}/',
+                    headers={'Authorization': f'Bearer {access_token}'}
+                )
+                if course_response.status_code == 200:
+                    course_data = course_response.json()
+                    course = course_data.get('course')
+    except Exception as e:
+        messages.error(request, f'Error fetching certification: {str(e)}')
+        return redirect('instructor_courses')
+    
+    if request.method == 'POST':
+        try:
+            badge_image = request.POST.get('badge_image', '').strip()
+            if not badge_image:
+                badge_image = None
+            
+            update_data = {
+                'title': request.POST.get('title'),
+                'description': request.POST.get('description'),
+                'passing_score': int(request.POST.get('passing_score', 70)),
+                'is_active': request.POST.get('is_active') == 'on'
+            }
+            
+            if badge_image:
+                update_data['badge_image'] = badge_image
+            
+            print(f"📤 Updating certification {certification_id}: {update_data}")
+            
+            response = requests.put(
+                f'http://localhost:8001/api/certifications/{certification_id}/update/',
+                json=update_data,
+                headers={'Authorization': f'Bearer {access_token}'}
+            )
+            
+            print(f"📥 Update response status: {response.status_code}")
+            print(f"📥 Update response body: {response.text}")
+            
+            if response.status_code == 200:
+                messages.success(request, 'Certification updated successfully!')
+                return redirect('manage_certification_steps', certification_id=certification_id)
+            else:
+                error_data = response.json()
+                error_msg = error_data.get('error', error_data)
+                messages.error(request, f'Failed to update certification: {error_msg}')
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+            print(f"❌ Exception: {str(e)}")
+    
+    context = {
+        'certification': certification,
+        'course': course,
+        'page_title': 'Edit Certification'
+    }
+    
+    return render(request, 'learner/edit_certification.html', context)
+
+
+@api_login_required
+def delete_certification_view(request, certification_id):
+    """Delete certification (Instructor only)"""
+    import requests
+    
+    user = get_current_user(request)
+    user_role = user.get('role', 'student')
+    
+    if user_role not in ['instructor', 'admin']:
+        messages.error(request, 'Access denied. Instructor privileges required.')
+        return redirect('index')
+    
+    access_token = get_access_token(request)
+    course_id = None
+    
+    try:
+        # Get certification to find course_id for redirect
+        cert_response = requests.get(
+            'http://localhost:8001/api/certifications/available/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        
+        if cert_response.status_code == 200:
+            cert_data = cert_response.json()
+            all_certs = cert_data.get('certifications', [])
+            certification = next((c for c in all_certs if c.get('id') == certification_id), None)
+            if certification:
+                course_id = certification.get('course_id')
+        
+        # Delete the certification
+        response = requests.delete(
+            f'http://localhost:8001/api/certifications/{certification_id}/delete/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        
+        print(f"📥 Delete response status: {response.status_code}")
+        print(f"📥 Delete response body: {response.text}")
+        
+        if response.status_code == 200:
+            messages.success(request, 'Certification deleted successfully!')
+        else:
+            error_data = response.json()
+            error_msg = error_data.get('error', 'Failed to delete certification')
+            messages.error(request, error_msg)
+    except Exception as e:
+        messages.error(request, f'Error deleting certification: {str(e)}')
+        print(f"❌ Exception: {str(e)}")
+    
+    # Redirect back to course detail or instructor courses
+    if course_id:
+        return redirect('course_detail', course_id=course_id)
+    else:
+        return redirect('instructor_courses')
+
+
+@api_login_required
+def certification_detail_view(request, certification_id):
+    """View certification details (Instructor)"""
+    import requests
+    
+    user = get_current_user(request)
+    user_role = user.get('role', 'student')
+    
+    if user_role not in ['instructor', 'admin']:
+        messages.error(request, 'Access denied. Instructor privileges required.')
+        return redirect('index')
+    
+    access_token = get_access_token(request)
+    certification = None
+    course = None
+    steps = []
+    
+    try:
+        # Fetch certification
+        cert_response = requests.get(
+            'http://localhost:8001/api/certifications/available/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        
+        if cert_response.status_code == 200:
+            cert_data = cert_response.json()
+            all_certs = cert_data.get('certifications', [])
+            certification = next((c for c in all_certs if c.get('id') == certification_id), None)
+            
+            if not certification:
+                messages.error(request, 'Certification not found')
+                return redirect('instructor_courses')
+            
+            # Fetch course
+            course_id = certification.get('course_id')
+            if course_id:
+                course_response = requests.get(
+                    f'http://localhost:8001/api/courses/{course_id}/',
+                    headers={'Authorization': f'Bearer {access_token}'}
+                )
+                if course_response.status_code == 200:
+                    course_data = course_response.json()
+                    course = course_data.get('course')
+            
+            # Fetch steps
+            steps_response = requests.get(
+                f'http://localhost:8001/api/certifications/{certification_id}/steps/',
+                headers={'Authorization': f'Bearer {access_token}'}
+            )
+            if steps_response.status_code == 200:
+                steps_data = steps_response.json()
+                steps = steps_data.get('steps', [])
+    except Exception as e:
+        messages.error(request, f'Error fetching certification details: {str(e)}')
+        return redirect('instructor_courses')
+    
+    context = {
+        'certification': certification,
+        'course': course,
+        'steps': steps,
+        'page_title': 'Certification Details'
+    }
+    
+    return render(request, 'learner/certification_detail.html', context)
 
 
 @api_login_required

@@ -65,6 +65,9 @@ urlpatterns = [
     
     # Certification URLs
     path('instructor/course/<str:course_id>/certifications/create/', views.create_certification_view, name='create_certification'),
+    path('instructor/certification/<str:certification_id>/', views.certification_detail_view, name='certification_detail'),
+    path('instructor/certification/<str:certification_id>/edit/', views.edit_certification_view, name='edit_certification'),
+    path('instructor/certification/<str:certification_id>/delete/', views.delete_certification_view, name='delete_certification'),
     path('instructor/certification/<str:certification_id>/steps/', views.manage_certification_steps_view, name='manage_certification_steps'),
     path('instructor/certification/<str:certification_id>/steps/add/', views.add_certification_step_view, name='add_certification_step'),
     path('instructor/certification/step/<str:step_id>/delete/', views.delete_certification_step_view, name='delete_certification_step'),
