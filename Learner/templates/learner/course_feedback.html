@@ -1,0 +1,462 @@
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}Course Feedback - SmartCampus{% endblock %}
+
+{% block body_class %}course-feedback-page{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<section class="page-header section light-background">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-12" data-aos="fade-up">
+        <h1>Course Feedback</h1>
+        <p>Share your learning experience and help us improve</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Feedback Section -->
+<section class="feedback-section section">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-8 mx-auto">
+        <!-- Completed Courses -->
+        <div class="completed-courses mb-5" data-aos="fade-up">
+          <h2 class="mb-4">Completed Courses</h2>
+          <div id="completedCoursesList" class="courses-list">
+            <div class="text-center py-5">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feedback Form (Hidden by default) -->
+        <div id="feedbackFormContainer" class="feedback-form-container" style="display: none;" data-aos="fade-up">
+          <div class="card">
+            <div class="card-header bg-primary text-white">
+              <h4 class="mb-0">
+                <i class="bi bi-chat-left-quote"></i> Feedback for <span id="courseTitleInForm"></span>
+              </h4>
+            </div>
+            <div class="card-body">
+              <form id="feedbackForm">
+                <!-- Rating -->
+                <div class="mb-4">
+                  <label class="form-label"><strong>Course Rating</strong></label>
+                  <div class="rating-input">
+                    <div class="stars" id="ratingStars">
+                      <i class="bi bi-star" data-rating="1"></i>
+                      <i class="bi bi-star" data-rating="2"></i>
+                      <i class="bi bi-star" data-rating="3"></i>
+                      <i class="bi bi-star" data-rating="4"></i>
+                      <i class="bi bi-star" data-rating="5"></i>
+                    </div>
+                    <input type="hidden" id="ratingValue" name="rating" value="0">
+                    <span id="ratingText" class="ms-3 text-muted">Select a rating</span>
+                  </div>
+                </div>
+
+                <!-- Feedback Comment -->
+                <div class="mb-4">
+                  <label for="feedbackComment" class="form-label"><strong>Your Feedback</strong></label>
+                  <textarea 
+                    id="feedbackComment" 
+                    name="comment" 
+                    class="form-control" 
+                    rows="5" 
+                    placeholder="Share your thoughts about the course, instructor, content quality, etc."
+                    required></textarea>
+                  <small class="text-muted">Minimum 10 characters</small>
+                </div>
+
+                <!-- Aspects of the Course -->
+                <div class="mb-4">
+                  <label class="form-label"><strong>What did you like most?</strong></label>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="aspects" value="content_quality" id="aspect1">
+                    <label class="form-check-label" for="aspect1">
+                      Content Quality
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="aspects" value="instructor" id="aspect2">
+                    <label class="form-check-label" for="aspect2">
+                      Instructor Teaching Style
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="aspects" value="pace" id="aspect3">
+                    <label class="form-check-label" for="aspect3">
+                      Course Pace
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="aspects" value="materials" id="aspect4">
+                    <label class="form-check-label" for="aspect4">
+                      Learning Materials
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="aspects" value="assignments" id="aspect5">
+                    <label class="form-check-label" for="aspect5">
+                      Assignments & Quizzes
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Would Recommend -->
+                <div class="mb-4">
+                  <label class="form-label"><strong>Would you recommend this course?</strong></label>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="recommend" value="yes" id="recommendYes" required>
+                    <label class="form-check-label" for="recommendYes">
+                      Yes, I would recommend it
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="recommend" value="no" id="recommendNo">
+                    <label class="form-check-label" for="recommendNo">
+                      No, I would not recommend it
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Hidden Course ID -->
+                <input type="hidden" id="courseIdInput" name="course_id">
+
+                <!-- Submit Button -->
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-primary btn-lg flex-grow-1">
+                    <i class="bi bi-send"></i> Submit Feedback
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary btn-lg" onclick="closeFeedbackForm()">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+.courses-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.course-card {
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.course-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+}
+
+.course-card-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  background: #f0f0f0;
+}
+
+.course-card-body {
+  padding: 20px;
+}
+
+.course-card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--heading-color);
+}
+
+.course-card-instructor {
+  font-size: 0.9rem;
+  color: var(--default-color);
+  margin-bottom: 15px;
+}
+
+.course-card-status {
+  display: inline-block;
+  background: #d4edda;
+  color: #155724;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 15px;
+}
+
+.course-card-button {
+  width: 100%;
+  padding: 10px;
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.3s;
+}
+
+.course-card-button:hover {
+  background: var(--accent-color-dark);
+  text-decoration: none;
+  color: white;
+}
+
+.feedback-form-container {
+  background: white;
+  border-radius: 10px;
+  padding: 30px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.rating-input {
+  display: flex;
+  align-items: center;
+}
+
+.stars {
+  display: flex;
+  gap: 10px;
+  font-size: 2rem;
+}
+
+.stars i {
+  cursor: pointer;
+  color: #ddd;
+  transition: color 0.2s;
+}
+
+.stars i:hover,
+.stars i.active {
+  color: #ffc107;
+}
+
+.form-check {
+  padding: 10px 0;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 10px;
+}
+
+.empty-state i {
+  font-size: 4rem;
+  color: #dee2e6;
+  margin-bottom: 20px;
+}
+</style>
+
+<script>
+const accessToken = '{{ access_token|default:"" }}';
+let selectedCourseId = null;
+
+// Load completed courses on page load
+document.addEventListener('DOMContentLoaded', function() {
+  loadCompletedCourses();
+  setupRatingStars();
+  setupFeedbackForm();
+});
+
+async function loadCompletedCourses() {
+  try {
+    const response = await fetch('http://localhost:8001/api/courses/my/enrollments/', {
+      headers: {
+        'Authorization': 'Bearer ' + accessToken
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const enrollments = data.enrollments || [];
+
+      // Filter completed courses
+      const completedCourses = enrollments.filter(e => e.completed || e.progress >= 100);
+
+      if (completedCourses.length === 0) {
+        document.getElementById('completedCoursesList').innerHTML = `
+          <div class="empty-state col-12">
+            <i class="bi bi-book"></i>
+            <h4>No Completed Courses</h4>
+            <p class="text-muted">Complete a course to share your feedback</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Fetch course details for each enrollment
+      let html = '';
+      for (const enrollment of completedCourses) {
+        const courseResponse = await fetch(`http://localhost:8001/api/courses/${enrollment.course_id}/`, {
+          headers: {
+            'Authorization': 'Bearer ' + accessToken
+          }
+        });
+
+        if (courseResponse.ok) {
+          const courseData = await courseResponse.json();
+          const course = courseData.course;
+
+          html += `
+            <div class="course-card">
+              <img src="${course.thumbnail_url || '/static/img/education/courses-3.webp'}" alt="${course.title}" class="course-card-image">
+              <div class="course-card-body">
+                <h5 class="course-card-title">${course.title}</h5>
+                <p class="course-card-instructor">
+                  <i class="bi bi-person"></i> ${course.instructor_name || 'Instructor'}
+                </p>
+                <span class="course-card-status">✓ Completed</span>
+                <button class="course-card-button" onclick="openFeedbackForm('${course.id}', '${course.title}')">
+                  <i class="bi bi-chat-left-quote"></i> Leave Feedback
+                </button>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      document.getElementById('completedCoursesList').innerHTML = html;
+    }
+  } catch (error) {
+    console.error('Error loading completed courses:', error);
+    document.getElementById('completedCoursesList').innerHTML = `
+      <div class="empty-state col-12">
+        <i class="bi bi-exclamation-triangle"></i>
+        <h4>Error Loading Courses</h4>
+        <p class="text-muted">Please refresh the page and try again</p>
+      </div>
+    `;
+  }
+}
+
+function setupRatingStars() {
+  const stars = document.querySelectorAll('#ratingStars i');
+  stars.forEach(star => {
+    star.addEventListener('click', function() {
+      const rating = this.getAttribute('data-rating');
+      document.getElementById('ratingValue').value = rating;
+
+      // Update star display
+      stars.forEach(s => s.classList.remove('active'));
+      for (let i = 0; i < rating; i++) {
+        stars[i].classList.add('active');
+      }
+
+      // Update text
+      const ratingTexts = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+      document.getElementById('ratingText').textContent = ratingTexts[rating];
+    });
+
+    // Hover effect
+    star.addEventListener('mouseover', function() {
+      const rating = this.getAttribute('data-rating');
+      stars.forEach(s => s.classList.remove('active'));
+      for (let i = 0; i < rating; i++) {
+        stars[i].classList.add('active');
+      }
+    });
+  });
+
+  document.getElementById('ratingStars').addEventListener('mouseout', function() {
+    const currentRating = document.getElementById('ratingValue').value;
+    stars.forEach(s => s.classList.remove('active'));
+    for (let i = 0; i < currentRating; i++) {
+      stars[i].classList.add('active');
+    }
+  });
+}
+
+function openFeedbackForm(courseId, courseTitle) {
+  selectedCourseId = courseId;
+  document.getElementById('courseIdInput').value = courseId;
+  document.getElementById('courseTitleInForm').textContent = courseTitle;
+  document.getElementById('feedbackFormContainer').style.display = 'block';
+  document.getElementById('feedbackForm').reset();
+  document.getElementById('ratingValue').value = 0;
+  document.getElementById('ratingText').textContent = 'Select a rating';
+  document.querySelectorAll('#ratingStars i').forEach(s => s.classList.remove('active'));
+  window.scrollTo({ top: document.getElementById('feedbackFormContainer').offsetTop - 100, behavior: 'smooth' });
+}
+
+function closeFeedbackForm() {
+  document.getElementById('feedbackFormContainer').style.display = 'none';
+  selectedCourseId = null;
+}
+
+function setupFeedbackForm() {
+  document.getElementById('feedbackForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const rating = document.getElementById('ratingValue').value;
+    const comment = document.getElementById('feedbackComment').value;
+    const recommend = document.querySelector('input[name="recommend"]:checked')?.value;
+
+    if (!rating || rating === '0') {
+      alert('Please select a rating');
+      return;
+    }
+
+    if (comment.length < 10) {
+      alert('Please write at least 10 characters in your feedback');
+      return;
+    }
+
+    if (!recommend) {
+      alert('Please indicate if you would recommend this course');
+      return;
+    }
+
+    const aspects = Array.from(document.querySelectorAll('input[name="aspects"]:checked')).map(cb => cb.value);
+
+    try {
+      const response = await fetch('http://localhost:8001/api/courses/feedback/submit/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + accessToken
+        },
+        body: JSON.stringify({
+          course_id: selectedCourseId,
+          rating: parseInt(rating),
+          comment: comment,
+          recommend: recommend === 'yes',
+          aspects: aspects
+        })
+      });
+
+      if (response.ok) {
+        alert('Thank you for your feedback! 🎉');
+        closeFeedbackForm();
+        loadCompletedCourses();
+      } else {
+        const error = await response.json();
+        alert('Error submitting feedback: ' + (error.error || 'Please try again'));
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error submitting feedback. Please try again.');
+    }
+  });
+}
+</script>
+{% endblock %}

@@ -737,7 +737,7 @@ function submitModule() {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer {{ request.session.access_token }}'
+      'Authorization': 'Bearer {{ access_token }}'
     },
     body: JSON.stringify(data)
   })
@@ -819,7 +819,7 @@ async function submitLesson() {
       const response = await fetch(`http://localhost:8001/api/courses/instructor/module/${moduleId}/lessons/`, {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer {{ request.session.access_token }}'
+          'Authorization': 'Bearer {{ access_token }}'
         },
         body: formData
       });
@@ -853,7 +853,7 @@ async function submitLesson() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer {{ request.session.access_token }}'
+          'Authorization': 'Bearer {{ access_token }}'
         },
         body: JSON.stringify(payload)
       });

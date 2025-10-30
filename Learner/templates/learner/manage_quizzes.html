@@ -12,7 +12,7 @@
     <div class="row align-items-center">
       <div class="col-lg-8" data-aos="fade-up">
         <h1>Manage Quizzes</h1>
-        <p>View, edit, and delete your quizzes</p>
+        <p>View, edit, delete quizzes and see student results</p>
       </div>
       <div class="col-lg-4 text-end" data-aos="fade-up" data-aos-delay="100">
         <a href="{% url 'instructor_dashboard' %}" class="btn btn-outline-secondary">
@@ -26,53 +26,132 @@
 <!-- Manage Quizzes Section -->
 <section class="manage-section section">
   <div class="container">
-    <div class="row">
+    <!-- Tabs for switching views -->
+    <div class="row mb-4">
       <div class="col-12">
-        <div class="management-card" data-aos="fade-up">
-          <!-- Search and Filter -->
-          <div class="management-header mb-4">
-            <div class="search-box">
-              <i class="bi bi-search"></i>
-              <input type="text" id="searchInput" placeholder="Search quizzes..." class="form-control">
-            </div>
-            <div class="filter-box">
-              <select id="courseFilter" class="form-select">
-                <option value="">All Courses</option>
-              </select>
+        <ul class="nav nav-tabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="quizzes-tab" data-bs-toggle="tab" data-bs-target="#quizzes-content" type="button" role="tab">
+              <i class="bi bi-question-circle"></i> My Quizzes
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="results-tab" data-bs-toggle="tab" data-bs-target="#results-content" type="button" role="tab">
+              <i class="bi bi-bar-chart"></i> Student Results
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      <!-- My Quizzes Tab -->
+      <div class="tab-pane fade show active" id="quizzes-content" role="tabpanel">
+        <div class="row">
+          <div class="col-12">
+            <div class="management-card" data-aos="fade-up">
+              <!-- Search and Filter -->
+              <div class="management-header mb-4">
+                <div class="search-box">
+                  <i class="bi bi-search"></i>
+                  <input type="text" id="searchInput" placeholder="Search quizzes..." class="form-control">
+                </div>
+                <div class="filter-box">
+                  <select id="courseFilter" class="form-select">
+                    <option value="">All Courses</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Quizzes Table -->
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>Quiz Title</th>
+                      <th>Course</th>
+                      <th>Lesson</th>
+                      <th>Questions</th>
+                      <th>Passing Score</th>
+                      <th>Attempts</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="quizzesTableBody">
+                    <tr>
+                      <td colspan="8" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                          <span class="visually-hidden">Loading...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Empty State -->
+              <div id="emptyState" class="empty-state text-center py-5" style="display: none;">
+                <i class="bi bi-question-circle display-1 text-muted mb-3"></i>
+                <h4>No Quizzes Found</h4>
+                <p class="text-muted">You haven't created any quizzes yet.</p>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
 
-          <!-- Quizzes Table -->
-          <div class="table-responsive">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th>Quiz Title</th>
-                  <th>Course</th>
-                  <th>Lesson</th>
-                  <th>Questions</th>
-                  <th>Duration</th>
-                  <th>Attempts</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="quizzesTableBody">
-                <tr>
-                  <td colspan="7" class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                      <span class="visually-hidden">Loading...</span>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+      <!-- Student Results Tab -->
+      <div class="tab-pane fade" id="results-content" role="tabpanel">
+        <div class="row">
+          <div class="col-12">
+            <div class="management-card" data-aos="fade-up">
+              <!-- Filter for results -->
+              <div class="management-header mb-4">
+                <div class="filter-box">
+                  <label class="form-label">Filter by Quiz:</label>
+                  <select id="quizFilterResults" class="form-select">
+                    <option value="">All Quizzes</option>
+                  </select>
+                </div>
+              </div>
 
-          <!-- Empty State -->
-          <div id="emptyState" class="empty-state text-center py-5" style="display: none;">
-            <i class="bi bi-question-circle display-1 text-muted mb-3"></i>
-            <h4>No Quizzes Found</h4>
-            <p class="text-muted">You haven't created any quizzes yet.</p>
+              <!-- Results Table -->
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>Student Name</th>
+                      <th>Quiz</th>
+                      <th>Course</th>
+                      <th>Score</th>
+                      <th>Percentage</th>
+                      <th>Status</th>
+                      <th>Attempts</th>
+                      <th>Date Completed</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="resultsTableBody">
+                    <tr>
+                      <td colspan="9" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                          <span class="visually-hidden">Loading...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Empty State -->
+              <div id="emptyResultsState" class="empty-state text-center py-5" style="display: none;">
+                <i class="bi bi-bar-chart display-1 text-muted mb-3"></i>
+                <h4>No Results Found</h4>
+                <p class="text-muted">No students have completed any quizzes yet.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -89,12 +168,30 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <p>Are you sure you want to delete this quiz? This action cannot be undone.</p>
-        <p class="text-danger"><strong>Warning:</strong> All student attempts will also be deleted.</p>
+        <p>Are you sure you want to delete this quiz?</p>
+        <p class="text-danger"><strong>Warning:</strong> This action cannot be undone and all student attempts will also be deleted.</p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete Quiz</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- View Results Modal -->
+<div class="modal fade" id="viewResultsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Quiz Results</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="resultsModalBody">
+        <!-- Results will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -112,6 +209,7 @@
   display: flex;
   gap: 20px;
   flex-wrap: wrap;
+  align-items: flex-end;
 }
 
 .search-box {
@@ -155,16 +253,72 @@
 .empty-state i {
   color: #dee2e6;
 }
+
+.nav-tabs {
+  border-bottom: 2px solid #dee2e6;
+}
+
+.nav-tabs .nav-link {
+  color: #6c757d;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 12px 20px;
+  font-weight: 500;
+}
+
+.nav-tabs .nav-link:hover {
+  color: var(--accent-color);
+}
+
+.nav-tabs .nav-link.active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+  background: none;
+}
+
+.badge {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+.status-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.status-passed {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-failed {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status-published {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-draft {
+  background: #e2e3e5;
+  color: #383d41;
+}
 </style>
 
 <script>
 let quizzes = [];
+let allResults = [];
 let courses = {};
 let quizToDelete = null;
+const accessToken = '{{ access_token }}';
 
-// Fetch quizzes on page load
+// Fetch data on page load
 document.addEventListener('DOMContentLoaded', function() {
-  fetchQuizzes();
+  fetchQuizzesAndResults();
   setupEventListeners();
 });
 
@@ -175,24 +329,30 @@ function setupEventListeners() {
   // Course filter
   document.getElementById('courseFilter').addEventListener('change', filterQuizzes);
   
+  // Results filter
+  document.getElementById('quizFilterResults').addEventListener('change', filterResults);
+  
   // Delete confirmation
   document.getElementById('confirmDeleteBtn').addEventListener('click', deleteQuiz);
 }
 
-async function fetchQuizzes() {
+async function fetchQuizzesAndResults() {
   try {
-    const response = await fetch('http://localhost:8001/api/courses/instructor/my-courses/', {
+    // Fetch instructor's courses
+    const coursesResponse = await fetch('http://localhost:8001/api/courses/instructor/my-courses/', {
       headers: {
-        'Authorization': 'Bearer {{ request.session.access_token }}'
+        'Authorization': 'Bearer ' + accessToken
       }
     });
     
-    if (response.ok) {
-      const data = await response.json();
-      const allCourses = data.courses || [];
+    if (coursesResponse.ok) {
+      const coursesData = await coursesResponse.json();
+      const allCourses = coursesData.courses || [];
       
       // Extract all quizzes from all courses
       quizzes = [];
+      const quizIds = [];
+      
       allCourses.forEach(course => {
         courses[course.id] = course;
         if (course.modules) {
@@ -200,13 +360,15 @@ async function fetchQuizzes() {
             if (module.lessons) {
               module.lessons.forEach(lesson => {
                 if (lesson.quiz) {
-                  quizzes.push({
+                  const quiz = {
                     ...lesson.quiz,
                     course_title: course.title,
                     course_id: course.id,
                     lesson_title: lesson.title,
                     lesson_id: lesson.id
-                  });
+                  };
+                  quizzes.push(quiz);
+                  quizIds.push(quiz.id);
                 }
               });
             }
@@ -214,21 +376,75 @@ async function fetchQuizzes() {
         }
       });
       
+      // Fetch results for all quizzes
+      await fetchAllQuizResults(quizIds);
+      
       populateCourseFilter(allCourses);
+      populateQuizFilterResults();
       displayQuizzes(quizzes);
+      displayResults(allResults);
     }
   } catch (error) {
-    console.error('Error fetching quizzes:', error);
+    console.error('Error fetching data:', error);
     showError();
   }
 }
 
-function populateCourseFilter(courses) {
+async function fetchAllQuizResults(quizIds) {
+  allResults = [];
+  
+  for (const quizId of quizIds) {
+    try {
+      const response = await fetch(`http://localhost:8001/api/courses/instructor/quiz/${quizId}/attempts/`, {
+        headers: {
+          'Authorization': 'Bearer ' + accessToken
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const quiz = quizzes.find(q => q.id === quizId);
+        
+        if (data.student_attempts) {
+          data.student_attempts.forEach(studentAttempts => {
+            studentAttempts.attempts.forEach(attempt => {
+              allResults.push({
+                ...attempt,
+                student_name: studentAttempts.student_name,
+                student_id: studentAttempts.student_id,
+                quiz_id: quizId,
+                quiz_title: quiz?.title || 'Unknown Quiz',
+                course_title: quiz?.course_title || 'Unknown Course',
+                course_id: quiz?.course_id || ''
+              });
+            });
+          });
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching results for quiz ${quizId}:`, error);
+    }
+  }
+}
+
+function populateCourseFilter(coursesList) {
   const filter = document.getElementById('courseFilter');
-  courses.forEach(course => {
+  coursesList.forEach(course => {
     const option = document.createElement('option');
     option.value = course.id;
     option.textContent = course.title;
+    filter.appendChild(option);
+  });
+}
+
+function populateQuizFilterResults() {
+  const filter = document.getElementById('quizFilterResults');
+  const uniqueQuizzes = [...new Map(quizzes.map(q => [q.id, q])).values()];
+  
+  uniqueQuizzes.forEach(quiz => {
+    const option = document.createElement('option');
+    option.value = quiz.id;
+    option.textContent = `${quiz.title} (${quiz.course_title})`;
     filter.appendChild(option);
   });
 }
@@ -245,29 +461,76 @@ function displayQuizzes(quizzesToDisplay) {
   
   emptyState.style.display = 'none';
   
-  tbody.innerHTML = quizzesToDisplay.map(quiz => `
-    <tr>
-      <td>
-        <strong>${quiz.title || 'Untitled Quiz'}</strong>
-        ${quiz.description ? `<br><small class="text-muted">${quiz.description.substring(0, 60)}...</small>` : ''}
-      </td>
-      <td>${quiz.course_title}</td>
-      <td>${quiz.lesson_title}</td>
-      <td><span class="badge bg-info">${quiz.questions?.length || 0} questions</span></td>
-      <td>${quiz.time_limit || 'No limit'} min</td>
-      <td>${quiz.attempts_count || 0}</td>
-      <td>
-        <div class="action-buttons">
-          <a href="/instructor/lesson/${quiz.lesson_id}/quiz/create/" class="btn btn-sm btn-primary" title="Edit">
-            <i class="bi bi-pencil"></i>
-          </a>
-          <button class="btn btn-sm btn-danger" onclick="confirmDelete('${quiz.id}')" title="Delete">
-            <i class="bi bi-trash"></i>
+  tbody.innerHTML = quizzesToDisplay.map(quiz => {
+    const attemptCount = allResults.filter(r => r.quiz_id === quiz.id).length;
+    const status = quiz.is_published ? 'Published' : 'Draft';
+    const statusClass = quiz.is_published ? 'status-published' : 'status-draft';
+    
+    return `
+      <tr>
+        <td>
+          <strong>${quiz.title || 'Untitled Quiz'}</strong>
+          ${quiz.description ? `<br><small class="text-muted">${quiz.description.substring(0, 60)}...</small>` : ''}
+        </td>
+        <td>${quiz.course_title}</td>
+        <td>${quiz.lesson_title}</td>
+        <td><span class="badge bg-info">${quiz.questions?.length || 0}</span></td>
+        <td>${quiz.passing_score || 70}%</td>
+        <td><span class="badge bg-secondary">${attemptCount}</span></td>
+        <td><span class="status-badge ${statusClass}">${status}</span></td>
+        <td>
+          <div class="action-buttons">
+            <a href="/instructor/lesson/${quiz.lesson_id}/quiz/create/" class="btn btn-sm btn-primary" title="Edit">
+              <i class="bi bi-pencil"></i>
+            </a>
+            <button class="btn btn-sm btn-info" onclick="viewQuizResults('${quiz.id}')" title="View Results">
+              <i class="bi bi-bar-chart"></i>
+            </button>
+            <button class="btn btn-sm btn-danger" onclick="confirmDelete('${quiz.id}')" title="Delete">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function displayResults(resultsToDisplay) {
+  const tbody = document.getElementById('resultsTableBody');
+  const emptyState = document.getElementById('emptyResultsState');
+  
+  if (resultsToDisplay.length === 0) {
+    tbody.innerHTML = '';
+    emptyState.style.display = 'block';
+    return;
+  }
+  
+  emptyState.style.display = 'none';
+  
+  tbody.innerHTML = resultsToDisplay.map(result => {
+    const statusClass = result.passed ? 'status-passed' : 'status-failed';
+    const statusText = result.passed ? 'Passed' : 'Failed';
+    const completedDate = result.completed_at ? new Date(result.completed_at).toLocaleDateString() : 'N/A';
+    
+    return `
+      <tr>
+        <td><strong>${result.student_name}</strong></td>
+        <td>${result.quiz_title}</td>
+        <td>${result.course_title}</td>
+        <td>${result.score}/${result.max_score}</td>
+        <td><strong>${result.percentage}%</strong></td>
+        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+        <td>1</td>
+        <td>${completedDate}</td>
+        <td>
+          <button class="btn btn-sm btn-info" onclick="viewAttemptDetails('${result.id}')" title="View Details">
+            <i class="bi bi-eye"></i>
           </button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
 function filterQuizzes() {
@@ -294,6 +557,121 @@ function filterQuizzes() {
   displayQuizzes(filtered);
 }
 
+function filterResults() {
+  const quizFilter = document.getElementById('quizFilterResults').value;
+  
+  let filtered = allResults;
+  
+  if (quizFilter) {
+    filtered = filtered.filter(result => result.quiz_id === quizFilter);
+  }
+  
+  displayResults(filtered);
+}
+
+function viewQuizResults(quizId) {
+  const quiz = quizzes.find(q => q.id === quizId);
+  const quizResults = allResults.filter(r => r.quiz_id === quizId);
+  
+  if (quizResults.length === 0) {
+    alert('No student attempts for this quiz yet.');
+    return;
+  }
+  
+  let html = `
+    <h6>${quiz.title}</h6>
+    <p class="text-muted">${quiz.course_title} - ${quiz.lesson_title}</p>
+    <hr>
+    <div class="table-responsive">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Score</th>
+            <th>Percentage</th>
+            <th>Status</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  quizResults.forEach(result => {
+    const statusClass = result.passed ? 'text-success' : 'text-danger';
+    const statusText = result.passed ? 'Passed' : 'Failed';
+    const completedDate = result.completed_at ? new Date(result.completed_at).toLocaleDateString() : 'N/A';
+    
+    html += `
+      <tr>
+        <td>${result.student_name}</td>
+        <td>${result.score}/${result.max_score}</td>
+        <td><strong>${result.percentage}%</strong></td>
+        <td><span class="${statusClass}">${statusText}</span></td>
+        <td>${completedDate}</td>
+      </tr>
+    `;
+  });
+  
+  html += `
+        </tbody>
+      </table>
+    </div>
+    <hr>
+    <div class="stats">
+      <p><strong>Total Attempts:</strong> ${quizResults.length}</p>
+      <p><strong>Average Score:</strong> ${(quizResults.reduce((sum, r) => sum + r.percentage, 0) / quizResults.length).toFixed(2)}%</p>
+      <p><strong>Pass Rate:</strong> ${((quizResults.filter(r => r.passed).length / quizResults.length) * 100).toFixed(2)}%</p>
+    </div>
+  `;
+  
+  document.getElementById('resultsModalBody').innerHTML = html;
+  const modal = new bootstrap.Modal(document.getElementById('viewResultsModal'));
+  modal.show();
+}
+
+function viewAttemptDetails(attemptId) {
+  const attempt = allResults.find(r => r.id === attemptId);
+  if (!attempt) return;
+  
+  let html = `
+    <h6>${attempt.quiz_title}</h6>
+    <p class="text-muted">${attempt.student_name}</p>
+    <hr>
+    <div class="row">
+      <div class="col-md-6">
+        <p><strong>Score:</strong> ${attempt.score}/${attempt.max_score}</p>
+        <p><strong>Percentage:</strong> ${attempt.percentage}%</p>
+      </div>
+      <div class="col-md-6">
+        <p><strong>Status:</strong> <span class="${attempt.passed ? 'text-success' : 'text-danger'}">${attempt.passed ? 'Passed' : 'Failed'}</span></p>
+        <p><strong>Time Taken:</strong> ${attempt.time_taken_minutes} minutes</p>
+      </div>
+    </div>
+    <hr>
+    <h6>Answers</h6>
+    <div class="answers-list">
+  `;
+  
+  if (attempt.answers && Array.isArray(attempt.answers)) {
+    attempt.answers.forEach((answer, index) => {
+      html += `
+        <div class="answer-item mb-3 p-2 border rounded">
+          <p><strong>Question ${index + 1}:</strong></p>
+          <p>Selected Answer: ${answer.selected_answer}</p>
+        </div>
+      `;
+    });
+  }
+  
+  html += `
+    </div>
+  `;
+  
+  document.getElementById('resultsModalBody').innerHTML = html;
+  const modal = new bootstrap.Modal(document.getElementById('viewResultsModal'));
+  modal.show();
+}
+
 function confirmDelete(quizId) {
   quizToDelete = quizId;
   const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
@@ -307,14 +685,17 @@ async function deleteQuiz() {
     const response = await fetch(`http://localhost:8001/api/courses/instructor/quiz/${quizToDelete}/`, {
       method: 'DELETE',
       headers: {
-        'Authorization': 'Bearer {{ request.session.access_token }}'
+        'Authorization': 'Bearer ' + accessToken
       }
     });
     
     if (response.ok) {
       // Remove from local array
       quizzes = quizzes.filter(q => q.id !== quizToDelete);
+      allResults = allResults.filter(r => r.quiz_id !== quizToDelete);
+      
       displayQuizzes(quizzes);
+      displayResults(allResults);
       
       // Close modal
       const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
@@ -337,7 +718,7 @@ function showError() {
   const tbody = document.getElementById('quizzesTableBody');
   tbody.innerHTML = `
     <tr>
-      <td colspan="7" class="text-center text-danger py-4">
+      <td colspan="8" class="text-center text-danger py-4">
         <i class="bi bi-exclamation-triangle"></i> Error loading quizzes. Please refresh the page.
       </td>
     </tr>

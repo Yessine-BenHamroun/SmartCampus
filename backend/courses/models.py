@@ -196,6 +196,7 @@ class Enrollment:
     def find_one(cls, student_id, course_id):
         """Check if student is enrolled in course"""
         collection = cls.get_collection()
+        # Convert to ObjectId for database lookup since enrollments are stored with ObjectIds
         if isinstance(student_id, str):
             student_id = ObjectId(student_id)
         if isinstance(course_id, str):

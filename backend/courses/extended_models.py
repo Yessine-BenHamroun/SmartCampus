@@ -234,8 +234,9 @@ class Quiz:
     def find_by_lesson(cls, lesson_id):
         """Find quiz by lesson"""
         collection = cls.get_collection()
-        if isinstance(lesson_id, str):
-            lesson_id = ObjectId(lesson_id)
+        # Keep lesson_id as string since it's stored as string in the database
+        if isinstance(lesson_id, ObjectId):
+            lesson_id = str(lesson_id)
         quiz_data = collection.find_one({'lesson_id': lesson_id})
         return cls(**quiz_data) if quiz_data else None
     

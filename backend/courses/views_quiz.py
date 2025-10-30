@@ -81,6 +81,10 @@ def manage_quiz(request, quiz_id):
 @permission_classes([IsAuthenticated])
 def get_lesson_quiz(request, lesson_id):
     """Get quiz for a lesson (Student view - no correct answers)"""
+    from bson import ObjectId
+    from courses.models_progress import StudentProgress
+    from courses.extended_models import Module
+    
     lesson = Lesson.find_by_id(lesson_id)
     if not lesson:
         return Response({'error': 'Lesson not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -90,13 +94,101 @@ def get_lesson_quiz(request, lesson_id):
         return Response({'error': 'No quiz found for this lesson'}, 
                        status=status.HTTP_404_NOT_FOUND)
     
+    # Check if student is instructor
+    user = User.find_by_id(str(request.user.id))
+    is_instructor = user and user.role == 'instructor'
+    
+    # For students, check if they are enrolled in the course
+    if not is_instructor:
+        # Get course_id from lesson or module
+        if lesson.course_id:
+            course_id = str(lesson.course_id)
+        else:
+            module = Module.find_by_id(str(lesson.module_id))
+            if not module:
+                return Response({'error': 'Module not found'}, status=status.HTTP_404_NOT_FOUND)
+            course_id = str(module.course_id)
+        
+        # Check enrollment - allow quiz access if enrolled
+        from courses.models import Enrollment
+        enrollment = Enrollment.find_one(str(request.user.id), course_id)
+        if not enrollment:
+            return Response({'error': 'Not enrolled in this course'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Optional: Check if lesson is completed (commented out for now to allow testing)
+        # progress = StudentProgress.find_by_student_and_course(str(request.user.id), course_id)
+        # lesson_completed = False
+        #
+        # if progress and progress.lessons_completed:
+        #     try:
+        #         lesson_id_obj = ObjectId(lesson_id)
+        #         lesson_completed = lesson_id_obj in progress.lessons_completed
+        #     except Exception as e:
+        #         print(f"Error converting lesson_id {lesson_id} to ObjectId: {e}")
+        #         lesson_completed = str(lesson_id) in [str(lid) for lid in progress.lessons_completed]
+        #
+        # if not lesson_completed:
+        #     return Response({
+        #         'error': 'You must complete this lesson before taking the quiz',
+        #         'lesson_id': lesson_id,
+        #         'available': False
+        #     }, status=status.HTTP_403_FORBIDDEN)
+    
     # Don't show correct answers to students before attempt
     quiz_data = quiz.to_dict()
     if str(request.user.id) != quiz.instructor_id:
         for question in quiz_data.get('questions', []):
             question.pop('correct_answer', None)
     
+    quiz_data['available'] = True
     return Response(quiz_data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def check_lesson_quiz_availability(request, lesson_id):
+    """Check if a quiz exists for a lesson (without gating - for immediate display after lesson completion)"""
+    try:
+        lesson = Lesson.find_by_id(lesson_id)
+        if not lesson:
+            return Response({
+                'has_quiz': False,
+                'quiz': None,
+                'error': 'Lesson not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        quiz = Quiz.find_by_lesson(lesson_id)
+        if not quiz:
+            return Response({
+                'has_quiz': False,
+                'quiz': None
+            }, status=status.HTTP_200_OK)
+        
+        # Return quiz info without gating (for checking availability right after lesson completion)
+        quiz_data = quiz.to_dict()
+        
+        # Don't show correct answers to students
+        user = User.find_by_id(str(request.user.id))
+        is_instructor = user and user.role == 'instructor'
+        
+        if not is_instructor:
+            for question in quiz_data.get('questions', []):
+                question.pop('correct_answer', None)
+        
+        return Response({
+            'has_quiz': True,
+            'quiz': quiz_data,
+            'available': True
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        print(f"Error in check_lesson_quiz_availability: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Response({
+            'has_quiz': False,
+            'quiz': None,
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])

@@ -351,7 +351,7 @@ document.getElementById('assignmentForm').addEventListener('submit', async funct
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer {{ request.session.access_token }}'
+        'Authorization': 'Bearer {{ access_token }}'
       },
       body: JSON.stringify(formData)
     });

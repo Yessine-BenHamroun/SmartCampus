@@ -186,9 +186,23 @@
                 {% endif %}
               </div>
             {% elif is_enrolled %}
-              <a href="{% url 'course_learning' course.id %}" class="btn btn-success btn-lg w-100">
-                <i class="bi bi-play-circle"></i> Continue Learning
-              </a>
+              {% if enrollment_progress >= 100 %}
+                <!-- Course Completed - Show Feedback and Assignment -->
+                <button class="btn btn-success btn-lg w-100 mb-2" onclick="openFeedbackModal()">
+                  <i class="bi bi-star"></i> Leave Feedback
+                </button>
+                <button class="btn btn-primary btn-lg w-100 mb-2" onclick="takeAssignment()">
+                  <i class="bi bi-clipboard-check"></i> Take Assignment
+                </button>
+                <a href="{% url 'course_learning' course.id %}" class="btn btn-outline-success btn-lg w-100">
+                  <i class="bi bi-play-circle"></i> Review Course
+                </a>
+              {% else %}
+                <!-- Course In Progress - Show Continue Learning -->
+                <a href="{% url 'course_learning' course.id %}" class="btn btn-success btn-lg w-100">
+                  <i class="bi bi-play-circle"></i> Continue Learning ({{ enrollment_progress|default:0 }}%)
+                </a>
+              {% endif %}
               <p class="text-center text-muted"><i class="bi bi-check-circle"></i> You're enrolled!</p>
             {% else %}
               <button id="enrollBtn" class="btn btn-primary btn-lg w-100" onclick="enrollInCourse()">
@@ -526,12 +540,12 @@
 <script>
 // Debug: Log authentication status on page load
 console.log('=== COURSE DETAIL PAGE DEBUG ===');
-console.log('Is Authenticated:', {{ is_authenticated|yesno:"true,false" }});
+console.log('Is Authenticated:', '{{ is_authenticated|yesno:"true,false" }}');
 console.log('Current User:', '{% if current_user %}{{ current_user.email|default:"Unknown" }}{% else %}None{% endif %}');
-console.log('Access Token Exists:', '{{ request.session.access_token }}' ? 'Yes' : 'No');
-console.log('Access Token Length:', '{{ request.session.access_token }}'.length);
-console.log('Access Token (first 50 chars):', '{{ request.session.access_token }}'.substring(0, 50));
-console.log('Is Enrolled:', {{ is_enrolled|yesno:"true,false" }});
+console.log('Access Token Exists:', '{{ access_token }}' ? 'Yes' : 'No');
+console.log('Access Token Length:', '{{ access_token|length }}');
+console.log('Access Token (first 50 chars):', '{{ access_token|slice:":50" }}');
+console.log('Is Enrolled:', '{{ is_enrolled|yesno:"true,false" }}');
 console.log('================================');
 
 const courseId = '{{ course.id }}';
@@ -542,7 +556,7 @@ async function enrollInCourse() {
   enrollBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enrolling...';
 
   // Debug: Check if token exists
-  let token = '{{ request.session.access_token }}';
+  let token = '{{ access_token|default:"" }}';
   const refreshToken = '{{ request.session.refresh_token }}';
   console.log('Access token exists:', token ? 'Yes' : 'No');
   console.log('Token length:', token.length);
@@ -614,5 +628,122 @@ async function enrollInCourse() {
     enrollBtn.innerHTML = '<i class="bi bi-bookmark-plus"></i> Start Learning';
   }
 }
+</script>
+
+<!-- Feedback Modal -->
+<div class="modal fade" id="feedbackModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Course Feedback</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="feedbackForm">
+          <!-- Rating -->
+          <div class="mb-3">
+            <label class="form-label">How would you rate this course?</label>
+            <div class="rating-stars">
+              <i class="bi bi-star" data-rating="1"></i>
+              <i class="bi bi-star" data-rating="2"></i>
+              <i class="bi bi-star" data-rating="3"></i>
+              <i class="bi bi-star" data-rating="4"></i>
+              <i class="bi bi-star" data-rating="5"></i>
+            </div>
+            <input type="hidden" id="feedbackRating" value="0">
+          </div>
+          
+          <!-- Comment -->
+          <div class="mb-3">
+            <label for="feedbackComment" class="form-label">Your Feedback (Optional)</label>
+            <textarea class="form-control" id="feedbackComment" rows="4" placeholder="Share your thoughts about this course..."></textarea>
+          </div>
+          
+          <!-- Recommend -->
+          <div class="mb-3">
+            <label class="form-label">Would you recommend this course?</label>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="recommend" value="true" checked>
+              <label class="form-check-label">Yes</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="recommend" value="false">
+              <label class="form-check-label">No</label>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="submitFeedback()">Submit Feedback</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Feedback functions
+function openFeedbackModal() {
+  const modal = new bootstrap.Modal(document.getElementById('feedbackModal'));
+  modal.show();
+}
+
+async function submitFeedback() {
+  const rating = document.getElementById('feedbackRating').value;
+  const comment = document.getElementById('feedbackComment').value;
+  const recommend = document.querySelector('input[name="recommend"]:checked').value === 'true';
+  
+  if (!rating || rating === '0') {
+    alert('Please select a rating');
+    return;
+  }
+  
+  try {
+    const token = '{{ access_token|default:"" }}';
+    const response = await fetch(`http://localhost:8001/api/courses/${courseId}/feedback/submit/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({
+        rating: parseInt(rating),
+        comment: comment,
+        recommend: recommend
+      })
+    });
+    
+    if (response.ok) {
+      alert('Thank you for your feedback!');
+      bootstrap.Modal.getInstance(document.getElementById('feedbackModal')).hide();
+    } else {
+      const error = await response.json();
+      alert('Error: ' + error.error);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Failed to submit feedback');
+  }
+}
+
+function takeAssignment() {
+  alert('Assignment feature coming soon!');
+}
+
+// Initialize rating stars
+document.addEventListener('DOMContentLoaded', function() {
+  const stars = document.querySelectorAll('.rating-stars i');
+  stars.forEach(star => {
+    star.addEventListener('click', function() {
+      const rating = this.dataset.rating;
+      document.getElementById('feedbackRating').value = rating;
+      
+      stars.forEach(s => s.classList.remove('active'));
+      for (let i = 0; i < rating; i++) {
+        stars[i].classList.add('active');
+      }
+    });
+  });
+});
 </script>
 {% endblock %}

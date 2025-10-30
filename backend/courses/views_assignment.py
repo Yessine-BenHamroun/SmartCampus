@@ -101,6 +101,10 @@ def get_course_assignments(request, course_id):
 @permission_classes([IsAuthenticated])
 def get_assignment_detail(request, assignment_id):
     """Get assignment details for student"""
+    from bson import ObjectId
+    from courses.models_progress import StudentProgress
+    from courses.extended_models import Lesson, Module
+    
     assignment = Assignment.find_by_id(assignment_id)
     if not assignment:
         return Response({'error': 'Assignment not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -111,7 +115,40 @@ def get_assignment_detail(request, assignment_id):
             return Response({'error': 'This assignment is not published yet'}, 
                            status=status.HTTP_400_BAD_REQUEST)
     
+    # Check if student is instructor
+    user = User.find_by_id(str(request.user.id))
+    is_instructor = user and user.role == 'instructor'
+    
     assignment_data = assignment.to_dict()
+    
+    # For students, check if all lessons in the course are completed
+    if not is_instructor:
+        course_id = str(assignment.course_id)
+        progress = StudentProgress.find_by_student_and_course(str(request.user.id), course_id)
+        
+        # Get all lessons in the course
+        modules = Module.find_by_course(course_id)
+        all_lessons = []
+        for module in modules:
+            lessons = Lesson.find_by_module(str(module.id))
+            all_lessons.extend(lessons)
+        
+        # Check if all lessons are completed
+        lessons_completed = progress.lessons_completed if progress else []
+        all_lessons_completed = all(
+            ObjectId(lesson.id) in lessons_completed for lesson in all_lessons
+        ) if all_lessons else False
+        
+        if not all_lessons_completed:
+            return Response({
+                'error': 'You must complete all lessons in this course before accessing the assignment',
+                'assignment_id': assignment_id,
+                'available': False,
+                'lessons_completed': len(lessons_completed),
+                'total_lessons': len(all_lessons)
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        assignment_data['available'] = True
     
     # Check student's previous attempts
     previous_submissions = AssignmentSubmission.find_by_student_assignment(str(request.user.id), assignment_id)

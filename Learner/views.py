@@ -57,6 +57,7 @@ def course_detail(request, course_id):
     course = None
     modules = []
     is_enrolled = False
+    enrollment_progress = 0
     
     try:
         # Fetch course details from backend API
@@ -82,7 +83,7 @@ def course_detail(request, course_id):
                     else:
                         module['lessons'] = []
             
-            # Check if user is enrolled (if logged in)
+            # Check if user is enrolled and get progress (if logged in)
             if api_is_authenticated(request):
                 access_token = get_access_token(request)
                 enrollment_response = requests.get(
@@ -93,6 +94,19 @@ def course_detail(request, course_id):
                     enrollment_data = enrollment_response.json()
                     is_enrolled = enrollment_data.get('is_enrolled', False)
                     
+                    # If enrolled, fetch progress details
+                    if is_enrolled:
+                        progress_response = requests.get(
+                            f'http://localhost:8001/api/courses/{course_id}/progress/details/',
+                            headers={'Authorization': f'Bearer {access_token}'}
+                        )
+                        if progress_response.status_code == 200:
+                            progress_data = progress_response.json()
+                            progress_info = progress_data.get('progress', {})
+                            enrollment_progress = progress_info.get('completion_percentage', 0)
+                        else:
+                            print(f"Failed to fetch progress: {progress_response.status_code}")
+    
     except Exception as e:
         print(f"Error fetching course details: {str(e)}")
         import traceback
@@ -106,14 +120,17 @@ def course_detail(request, course_id):
         'course': course,
         'modules': modules,
         'is_enrolled': is_enrolled,
+        'enrollment_progress': enrollment_progress,
         'current_user': current_user,
-        'is_authenticated': is_logged_in
+        'is_authenticated': is_logged_in,
+        'access_token': access_token if is_logged_in else None
     }
     
     # Debug: Print session info
     if is_logged_in:
         print(f"✅ User is authenticated: {current_user.get('email') if current_user else 'Unknown'}")
         print(f"🔑 Access token in session: {bool(request.session.get('access_token'))}")
+        print(f"📊 Enrollment progress: {enrollment_progress}%")
     else:
         print("❌ User is NOT authenticated")
     
@@ -956,7 +973,8 @@ def edit_course_view(request, course_id):
         'page_title': 'Edit Course',
         'course': course,
         'categories': ['general', 'programming', 'design', 'business', 'marketing', 'data-science'],
-        'levels': ['beginner', 'intermediate', 'advanced']
+        'levels': ['beginner', 'intermediate', 'advanced'],
+        'access_token': access_token
     }
     
     return render(request, 'learner/edit_course.html', context)
@@ -1019,7 +1037,8 @@ def take_quiz_view(request, quiz_id):
     
     context = {
         'quiz': quiz,
-        'quiz_json': json.dumps(quiz)
+        'quiz_json': json.dumps(quiz),
+        'access_token': access_token
     }
     
     return render(request, 'learner/take_quiz.html', context)
@@ -1079,7 +1098,8 @@ def take_assignment_view(request, assignment_id):
     
     context = {
         'assignment': assignment,
-        'assignment_json': json.dumps(assignment)
+        'assignment_json': json.dumps(assignment),
+        'access_token': access_token
     }
     
     return render(request, 'learner/take_assignment.html', context)
@@ -1088,13 +1108,15 @@ def take_assignment_view(request, assignment_id):
 @api_login_required
 def manage_quizzes_view(request):
     """Manage all quizzes (Instructor)"""
-    return render(request, 'learner/manage_quizzes.html')
+    access_token = get_access_token(request)
+    return render(request, 'learner/manage_quizzes.html', {'access_token': access_token})
 
 
 @api_login_required
 def manage_assignments_view(request):
     """Manage all assignments (Instructor)"""
-    return render(request, 'learner/manage_assignments.html')
+    access_token = get_access_token(request)
+    return render(request, 'learner/manage_assignments.html', {'access_token': access_token})
 
 
 @api_login_required
@@ -1119,7 +1141,8 @@ def grade_submission_view(request, submission_id):
     
     context = {
         'submission': submission,
-        'submission_json': json.dumps(submission)
+        'submission_json': json.dumps(submission),
+        'access_token': access_token
     }
     
     return render(request, 'learner/grade_submission.html', context)
@@ -1177,7 +1200,8 @@ def submit_course_review_view(request, course_id):
     
     context = {
         'course': course,
-        'course_id': course_id
+        'course_id': course_id,
+        'access_token': access_token
     }
     
     return render(request, 'learner/submit_course_review.html', context)
@@ -1214,7 +1238,8 @@ def submit_instructor_review_view(request, instructor_id, course_id):
         'course': course,
         'instructor': instructor,
         'course_id': course_id,
-        'instructor_id': instructor_id
+        'instructor_id': instructor_id,
+        'access_token': access_token
     }
     
     return render(request, 'learner/submit_instructor_review.html', context)
@@ -1232,6 +1257,23 @@ def course_learning_view(request, course_id):
     progress = None
     
     try:
+        # Check if user is enrolled in this course
+        enrollment_response = requests.get(
+            'http://localhost:8001/api/courses/my/enrollments/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        
+        if enrollment_response.status_code == 200:
+            enrollments = enrollment_response.json().get('enrollments', [])
+            enrolled_course_ids = [str(e.get('course_id')) for e in enrollments]
+            
+            if course_id not in enrolled_course_ids:
+                messages.error(request, 'You must be enrolled in this course to access the learning materials.')
+                return redirect('course_detail', course_id=course_id)
+        else:
+            messages.error(request, 'Unable to verify enrollment status.')
+            return redirect('course_detail', course_id=course_id)
+        
         # Fetch course details
         course_response = requests.get(
             f'http://localhost:8001/api/courses/{course_id}/',
@@ -1293,7 +1335,8 @@ def course_learning_view(request, course_id):
         'modules': modules,
         'current_lesson': current_lesson,
         'progress': progress,
-        'course_id': course_id
+        'course_id': course_id,
+        'access_token': access_token
     }
     
     return render(request, 'learner/course_learning.html', context)

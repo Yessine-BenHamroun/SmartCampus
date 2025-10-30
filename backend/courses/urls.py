@@ -29,6 +29,7 @@ from courses.views_quiz import (
     create_quiz,
     manage_quiz,
     get_lesson_quiz,
+    check_lesson_quiz_availability,
     submit_quiz,
     get_quiz_attempts,
     get_my_quiz_attempts,
@@ -56,10 +57,13 @@ from courses.views_progress import (
     get_student_progress,
     get_all_student_progress,
     update_lesson_progress,
+    get_course_status,
     submit_course_review,
     get_course_reviews,
     submit_instructor_review,
-    get_instructor_reviews
+    get_instructor_reviews,
+    submit_course_feedback,
+    get_course_feedbacks
 )
 
 app_name = 'courses'
@@ -94,6 +98,7 @@ urlpatterns = [
     
     # Quiz (Student)
     path('lesson/<str:lesson_id>/quiz/', get_lesson_quiz, name='get-lesson-quiz'),
+    path('lesson/<str:lesson_id>/quiz/check/', check_lesson_quiz_availability, name='check-lesson-quiz'),
     path('quiz/<str:quiz_id>/submit/', submit_quiz, name='submit-quiz'),
     path('quiz/<str:quiz_id>/my-attempts/', get_my_quiz_attempts, name='get-my-quiz-attempts'),
     path('course/<str:course_id>/quizzes/', get_course_quizzes, name='get-course-quizzes'),
@@ -123,12 +128,15 @@ urlpatterns = [
     path('<str:course_id>/modules/', CourseModulesView.as_view(), name='course-modules'),
     path('<str:course_id>/enroll/', EnrollCourseView.as_view(), name='enroll-course'),
     path('<str:course_id>/progress/', UpdateProgressView.as_view(), name='update-progress'),
+    path('<str:course_id>/status/', get_course_status, name='course-status'),
     path('<str:course_id>/reviews/', CourseReviewsView.as_view(), name='course-reviews'),
     path('<str:course_id>/progress/details/', get_student_progress, name='course-progress'),
     
     # Course Reviews & Feedback
     path('<str:course_id>/review/submit/', submit_course_review, name='submit-course-review'),
     path('<str:course_id>/review/list/', get_course_reviews, name='get-course-reviews'),
+    path('<str:course_id>/feedback/submit/', submit_course_feedback, name='submit-course-feedback'),
+    path('<str:course_id>/feedbacks/', get_course_feedbacks, name='get-course-feedbacks'),
     
     # Instructor Reviews & Feedback
     path('instructor/<str:instructor_id>/course/<str:course_id>/review/', submit_instructor_review, name='submit-instructor-review'),

@@ -95,9 +95,9 @@ class StudentProgress:
     
     def mark_lesson_complete(self, lesson_id):
         """Mark a lesson as completed"""
-        lesson_id = ObjectId(lesson_id)
-        if lesson_id not in self.lessons_completed:
-            self.lessons_completed.append(lesson_id)
+        lesson_id_str = str(lesson_id)
+        if lesson_id_str not in self.lessons_completed:
+            self.lessons_completed.append(lesson_id_str)
             self.update(lessons_completed=self.lessons_completed)
     
     def mark_quiz_complete(self, quiz_id, score, passed):

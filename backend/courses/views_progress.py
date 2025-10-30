@@ -57,6 +57,87 @@ def get_student_progress(request, course_id):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def get_course_status(request, course_id):
+    """
+    Get course status with availability flags for quizzes and assignments
+    Returns which lessons are completed and which quizzes/assignments are available
+    """
+    try:
+        from bson import ObjectId
+        student_id = str(request.user.id)
+        
+        # Get course
+        course = Course.find_by_id(course_id)
+        if not course:
+            return Response({'error': 'Course not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get progress
+        progress = StudentProgress.find_by_student_and_course(student_id, course_id)
+        
+        # Get all modules and lessons
+        from courses.extended_models import Module, Lesson, Quiz, Assignment
+        modules = Module.find_by_course(course_id)
+        
+        lessons_data = []
+        for module in modules:
+            lessons = Lesson.find_by_module(str(module.id))
+            for lesson in lessons:
+                lesson_id_str = str(lesson.id)
+                is_completed = ObjectId(lesson.id) in (progress.lessons_completed if progress else [])
+                
+                # Get quiz for this lesson if it exists
+                quiz = Quiz.find_by_lesson(lesson_id_str)
+                can_take_quiz = is_completed and quiz is not None and quiz.is_published
+                
+                lessons_data.append({
+                    'id': lesson_id_str,
+                    'title': lesson.title,
+                    'module_id': str(module.id),
+                    'completed': is_completed,
+                    'can_take_quiz': can_take_quiz,
+                    'quiz_id': str(quiz.id) if quiz else None,
+                    'duration_minutes': getattr(lesson, 'duration_minutes', 0)
+                })
+        
+        # Check if all lessons are completed
+        all_lessons_completed = all(l['completed'] for l in lessons_data) if lessons_data else False
+        
+        # Get assignments for this course
+        assignments = Assignment.find_by_course(course_id)
+        published_assignments = [a for a in assignments if a.is_published]
+        
+        # Assignment is available only if all lessons are completed
+        can_take_assignment = all_lessons_completed and len(published_assignments) > 0
+        
+        return Response({
+            'course_id': course_id,
+            'course_title': course.title,
+            'lessons': lessons_data,
+            'course_completed': all_lessons_completed,
+            'can_take_assignment': can_take_assignment,
+            'assignments': [
+                {
+                    'id': str(a.id),
+                    'title': a.title,
+                    'available': can_take_assignment
+                }
+                for a in published_assignments
+            ],
+            'completion_percentage': progress.completion_percentage if progress else 0
+        })
+        
+    except Exception as e:
+        import traceback
+        print(f"❌ Error in get_course_status: {str(e)}")
+        print(traceback.format_exc())
+        return Response({
+            'error': 'Failed to fetch course status',
+            'detail': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_all_student_progress(request):
     """
     Get all progress for logged-in student across all courses
@@ -232,22 +313,23 @@ def update_lesson_progress(request, lesson_id):
             current_time = getattr(progress, 'time_spent_minutes', 0) or 0
             progress.update(time_spent_minutes=current_time + time_spent_minutes)
         
-        # Recalculate completion percentage
+        # Recalculate completion percentage - based only on lessons for simplicity
         from bson import ObjectId
 
-        course_id_variants = {course_id}
-        if isinstance(course_id, str):
-            try:
-                course_id_variants.add(ObjectId(course_id))
-            except Exception:
-                pass
-
-        course_filter = {'$in': list(course_id_variants)}
-        total_lessons = Lesson.get_collection().count_documents({'course_id': course_filter})
-        total_quizzes = Quiz.get_collection().count_documents({'course_id': course_filter})
-        total_assignments = Assignment.get_collection().count_documents({'course_id': course_filter})
+        # Count total lessons in the course
+        total_lessons = Lesson.get_collection().count_documents({'course_id': str(course_id)})
         
-        progress.calculate_completion_percentage(total_lessons, total_quizzes, total_assignments)
+        # Calculate percentage based on lessons completed vs total lessons
+        if total_lessons > 0:
+            completed_percentage = (len(progress.lessons_completed) / total_lessons) * 100
+            progress.update(completion_percentage=round(completed_percentage, 2))
+        else:
+            progress.update(completion_percentage=0.0)
+        
+        # Update enrollment progress to match StudentProgress
+        enrollment = Enrollment.find_one(student_id, course_id)
+        if enrollment:
+            enrollment.update(progress=progress.completion_percentage)
         
         return Response({
             'message': 'Lesson marked as completed',
@@ -452,36 +534,117 @@ def submit_instructor_review(request, instructor_id, course_id):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['GET'])
-def get_instructor_reviews(request, instructor_id):
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def submit_course_feedback(request, course_id):
     """
-    Get all reviews for an instructor (public endpoint)
+    Submit feedback for a completed course
     """
     try:
-        reviews = InstructorReview.find_by_instructor(instructor_id)
+        student_id = str(request.user.id)
         
-        # Enrich with student and course names
-        enriched_reviews = []
-        for review in reviews:
-            review_dict = review.to_dict()
-            student = User.find_by_id(str(review.student_id))
-            course = Course.find_by_id(str(review.course_id))
-            if student:
-                review_dict['student_name'] = f"{student.first_name} {student.last_name}"
-            if course:
-                review_dict['course_title'] = course.title
-            enriched_reviews.append(review_dict)
+        # Validate course exists
+        course = Course.find_by_id(course_id)
+        if not course:
+            return Response({'error': 'Course not found'}, status=status.HTTP_404_NOT_FOUND)
         
-        # Get rating statistics
-        rating_stats = InstructorReview.get_instructor_average_rating(instructor_id)
+        # Check if student completed the course
+        progress = StudentProgress.find_by_student_and_course(student_id, course_id)
+        if not progress or progress.completion_percentage < 100:
+            return Response({'error': 'Course not completed'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if feedback already exists
+        existing_feedback = CourseReview.find_by_student_and_course(student_id, course_id)
+        if existing_feedback:
+            return Response({'error': 'Feedback already submitted'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Create feedback
+        feedback = CourseReview.create(
+            student_id=student_id,
+            course_id=course_id,
+            rating=request.data.get('rating', 5),
+            review_text=request.data.get('comment', ''),
+            would_recommend=request.data.get('recommend', True)
+        )
         
         return Response({
-            'reviews': enriched_reviews,
-            'statistics': rating_stats
+            'message': 'Feedback submitted successfully',
+            'feedback': feedback.to_dict()
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        return Response({
+            'error': 'Failed to submit feedback',
+            'detail': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_course_feedbacks(request, course_id):
+    """
+    Get all feedbacks for a course (instructor only)
+    """
+    try:
+        # Check if user is the course instructor
+        course = Course.find_by_id(course_id)
+        if not course or str(course.instructor_id) != str(request.user.id):
+            return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+        
+        feedbacks = CourseReview.find_by_course(course_id)
+        feedbacks_data = [feedback.to_dict() for feedback in feedbacks]
+        
+        return Response({
+            'feedbacks': feedbacks_data,
+            'count': len(feedbacks_data)
         })
         
     except Exception as e:
         return Response({
-            'error': 'Failed to fetch instructor reviews',
+            'error': 'Failed to load feedbacks',
+            'detail': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_instructor_reviews(request, instructor_id):
+    """
+    Get all reviews for an instructor across all their courses
+    """
+    try:
+        # Check if user is the instructor or an admin
+        if str(request.user.id) != instructor_id and request.user.role != 'admin':
+            return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Get all courses by this instructor
+        courses = Course.find_by_instructor(instructor_id)
+        course_ids = [str(course.id) for course in courses]
+        
+        # Get all reviews for these courses
+        all_reviews = []
+        for course_id in course_ids:
+            reviews = CourseReview.find_by_course(course_id)
+            for review in reviews:
+                review_dict = review.to_dict()
+                review_dict['course_title'] = next((c.title for c in courses if str(c.id) == course_id), 'Unknown Course')
+                all_reviews.append(review_dict)
+        
+        # Get instructor review statistics
+        total_reviews = len(all_reviews)
+        average_rating = sum(r['rating'] for r in all_reviews) / total_reviews if total_reviews > 0 else 0
+        
+        return Response({
+            'reviews': all_reviews,
+            'statistics': {
+                'total_reviews': total_reviews,
+                'average_rating': round(average_rating, 1),
+                'courses_count': len(courses)
+            }
+        })
+        
+    except Exception as e:
+        return Response({
+            'error': 'Failed to load instructor reviews',
             'detail': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

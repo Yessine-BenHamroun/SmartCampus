@@ -96,13 +96,13 @@
         </div>
         
         <div class="lesson-actions">
-          <button class="btn btn-outline-primary btn-lg" id="startQuizBtn" onclick="showLessonQuiz()" style="display: none;">
+          <button class="btn btn-outline-primary btn-lg" id="takeQuizBtn" onclick="takeQuiz()" style="display: none;">
             <i class="bi bi-question-circle"></i> Take Quiz
           </button>
           <button class="btn btn-outline-secondary btn-lg" id="toggleAssignmentsBtn" onclick="toggleAssignmentsSection()" style="display: none;">
             <i class="bi bi-journal-text"></i> View Assignments
           </button>
-          <button class="btn btn-success btn-lg" id="markCompleteBtn" onclick="markLessonComplete()">
+          <button class="btn btn-success btn-lg" id="markCompleteBtn" onclick="markLessonComplete()" style="display: none;">
             <i class="bi bi-check-circle"></i> Mark as Complete
           </button>
           <button class="btn btn-primary btn-lg" id="nextLessonBtn" onclick="goToNextLesson()" style="display: none;">
@@ -428,7 +428,8 @@
 
 <script>
 const courseId = '{{ course_id }}';
-const accessToken = '{{ request.session.access_token }}';
+// Get JWT token from localStorage
+const accessToken = '{{ access_token }}';
 let currentLessonId = '{{ current_lesson.id }}';
 let lessonStartTime = Date.now();
 let timerInterval = null;
@@ -539,6 +540,49 @@ async function loadLesson(lessonId, lessonTitle, contentType) {
       
       document.getElementById('lessonPlayer').innerHTML = contentHTML;
       
+      // Check if there's a quiz for this lesson
+      console.log('Checking for quiz for lesson:', lessonId);
+      try {
+        const quizCheckResponse = await fetch(`http://localhost:8001/api/courses/lesson/${lessonId}/quiz/check/`, {
+          headers: {
+            'Authorization': 'Bearer ' + accessToken
+          }
+        });
+        
+        console.log('Quiz check response status:', quizCheckResponse.status);
+        console.log('Quiz check response ok:', quizCheckResponse.ok);
+        
+        const responseText = await quizCheckResponse.text();
+        console.log('Quiz check raw response:', responseText);
+        
+        if (quizCheckResponse.ok && responseText) {
+          const quizCheckData = JSON.parse(responseText);
+          console.log('Quiz check data parsed:', quizCheckData);
+          
+          if (quizCheckData && quizCheckData.has_quiz === true) {
+            console.log('Quiz found! Showing Take Quiz button');
+            // Show "Take Quiz" button
+            document.getElementById('takeQuizBtn').style.display = 'inline-block';
+            document.getElementById('markCompleteBtn').style.display = 'none';
+          } else {
+            console.log('No quiz found. Showing Mark Complete button');
+            // No quiz, show "Mark as Complete" button
+            document.getElementById('takeQuizBtn').style.display = 'none';
+            document.getElementById('markCompleteBtn').style.display = 'inline-block';
+          }
+        } else {
+          console.log('Quiz check failed with status:', quizCheckResponse.status, 'Response:', responseText);
+          // Default to showing "Mark as Complete" button
+          document.getElementById('takeQuizBtn').style.display = 'none';
+          document.getElementById('markCompleteBtn').style.display = 'inline-block';
+        }
+      } catch (quizCheckError) {
+        console.error('Could not check for quiz:', quizCheckError);
+        // Default to showing "Mark as Complete" button
+        document.getElementById('takeQuizBtn').style.display = 'none';
+        document.getElementById('markCompleteBtn').style.display = 'inline-block';
+      }
+      
       // Start timer
       startTimer();
       
@@ -555,20 +599,32 @@ async function loadLesson(lessonId, lessonTitle, contentType) {
   }
 }
 
+// Take quiz function
+async function takeQuiz() {
+  await loadQuiz(currentLessonId);
+}
+
 // Load quiz for a lesson
 async function loadQuiz(lessonId) {
   try {
+    console.log('Loading quiz for lesson:', lessonId);
     const response = await fetch(`http://localhost:8001/api/courses/lesson/${lessonId}/quiz/`, {
       headers: {
         'Authorization': 'Bearer ' + accessToken
       }
     });
     
+    console.log('Quiz response status:', response.status);
+    
     if (response.ok) {
       const data = await response.json();
-      const quiz = data.quiz;
+      console.log('Quiz data received:', data);
+      const quiz = data.quiz || data;
       
-      if (!quiz) {
+      console.log('Quiz object:', quiz);
+      
+      if (!quiz || !quiz.questions) {
+        console.log('No quiz or no questions found');
         document.getElementById('lessonPlayer').innerHTML = `
           <div class="alert alert-info">
             <i class="bi bi-info-circle"></i> No quiz available for this lesson yet.
@@ -588,7 +644,7 @@ async function loadQuiz(lessonId) {
             ${quiz.passing_score ? `<span class="badge bg-success">Passing Score: ${quiz.passing_score}%</span>` : ''}
             ${quiz.time_limit_minutes > 0 ? `<span class="badge bg-warning">Time Limit: ${quiz.time_limit_minutes} min</span>` : ''}
           </div>
-          <form id="quizForm">
+          <form id="quizForm" data-quiz-id="${quiz.id}" data-lesson-id="${lessonId}">
       `;
       
       quiz.questions.forEach((q, index) => {
@@ -632,7 +688,9 @@ async function loadQuiz(lessonId) {
       // Handle quiz submission
       document.getElementById('quizForm').addEventListener('submit', async function(e) {
         e.preventDefault();
-        await submitQuiz(quiz.id, quiz.questions.length);
+        const quizId = this.getAttribute('data-quiz-id');
+        const lessonIdFromForm = this.getAttribute('data-lesson-id');
+        await submitQuiz(quizId, quiz.questions.length, lessonIdFromForm);
       });
       
       // Start timer
@@ -652,26 +710,33 @@ async function loadQuiz(lessonId) {
 }
 
 // Submit quiz
-async function submitQuiz(quizId, questionCount) {
+async function submitQuiz(quizId, questionCount, lessonId) {
   const form = document.getElementById('quizForm');
   const submitBtn = form.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
   
-  // Collect answers
+  // Collect answers in the correct format
   const answers = [];
   for (let i = 0; i < questionCount; i++) {
     const selected = form.querySelector(`input[name="question_${i}"]:checked`);
     if (selected) {
-      answers.push(parseInt(selected.value));
-    } else {
-      answers.push(null);
+      answers.push({
+        question_index: i,
+        selected_answer: parseInt(selected.value)
+      });
     }
   }
   
   // Stop timer
   stopTimer();
   const timeSpentMinutes = Math.ceil(elapsedSeconds / 60);
+  
+  console.log('Submitting quiz with answers:', answers);
+  console.log('Time spent:', timeSpentMinutes);
+  console.log('Quiz ID:', quizId);
+  console.log('Lesson ID:', lessonId);
+  console.log('Course ID:', courseId);
   
   try {
     const response = await fetch(`http://localhost:8001/api/courses/quiz/${quizId}/submit/`, {
@@ -681,14 +746,33 @@ async function submitQuiz(quizId, questionCount) {
         'Authorization': 'Bearer ' + accessToken
       },
       body: JSON.stringify({
+        quiz_id: quizId,
+        course_id: courseId,
+        lesson_id: lessonId,
         answers: answers,
-        time_spent_minutes: timeSpentMinutes
+        time_taken_minutes: timeSpentMinutes
       })
     });
     
+    console.log('Submit response status:', response.status);
+    
     if (response.ok) {
       const data = await response.json();
-      const attempt = data.attempt;
+      console.log('Response data:', data);
+      
+      // Handle both response formats: {attempt: {...}} and direct attempt object
+      const attempt = data.attempt || data;
+      
+      console.log('Attempt data:', attempt);
+      
+      if (!attempt || !attempt.hasOwnProperty('passed')) {
+        throw new Error('Invalid response format: missing attempt data');
+      }
+      
+      // Calculate correct answers
+      const totalQuestions = attempt.max_score || questionCount;
+      const correctAnswers = Math.round((attempt.percentage / 100) * totalQuestions);
+      const incorrectAnswers = totalQuestions - correctAnswers;
       
       // Display results
       let resultHTML = `
@@ -699,7 +783,7 @@ async function submitQuiz(quizId, questionCount) {
               '<i class="bi bi-x-circle-fill text-danger" style="font-size: 4rem;"></i>'
             }
             <h2 class="mt-3">${attempt.passed ? 'Congratulations! 🎉' : 'Keep Trying! 💪'}</h2>
-            <p class="lead">You scored ${attempt.score}%</p>
+            <p class="lead">You scored ${attempt.percentage}%</p>
             ${attempt.passed ? 
               '<p class="text-success">You passed the quiz!</p>' :
               '<p class="text-danger">You need ' + attempt.passing_score + '% to pass. Try again!</p>'
@@ -708,15 +792,15 @@ async function submitQuiz(quizId, questionCount) {
           <div class="quiz-stats">
             <div class="row text-center">
               <div class="col-md-4">
-                <h4>${attempt.correct_answers}</h4>
+                <h4>${correctAnswers}</h4>
                 <p class="text-muted">Correct</p>
               </div>
               <div class="col-md-4">
-                <h4>${attempt.total_questions - attempt.correct_answers}</h4>
+                <h4>${incorrectAnswers}</h4>
                 <p class="text-muted">Incorrect</p>
               </div>
               <div class="col-md-4">
-                <h4>${attempt.time_spent_minutes} min</h4>
+                <h4>${attempt.time_taken_minutes} min</h4>
                 <p class="text-muted">Time Spent</p>
               </div>
             </div>
@@ -749,8 +833,17 @@ async function submitQuiz(quizId, questionCount) {
       }
       
     } else {
-      const errorData = await response.json();
-      alert(errorData.error || 'Failed to submit quiz');
+      const errorText = await response.text();
+      console.error('Submit error response:', errorText);
+      let errorMessage = 'Failed to submit quiz';
+      try {
+        const errorData = JSON.parse(errorText);
+        console.error('Error data:', errorData);
+        errorMessage = errorData.error || errorData.detail || JSON.stringify(errorData);
+      } catch (e) {
+        console.error('Could not parse error response');
+      }
+      alert(errorMessage);
       submitBtn.disabled = false;
       submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Submit Quiz';
     }
@@ -800,7 +893,34 @@ async function markLessonComplete() {
         document.querySelector('.progress-text').textContent = data.progress.completion_percentage + '% Complete';
       }
       
-      // Show next lesson button
+      // Check if there's a quiz for this lesson (use ungated endpoint)
+      try {
+        const quizResponse = await fetch(`http://localhost:8001/api/courses/lesson/${currentLessonId}/quiz/check/`, {
+          headers: {
+            'Authorization': 'Bearer ' + accessToken
+          }
+        });
+        
+        if (quizResponse.ok) {
+          const quizData = await quizResponse.json();
+          if (quizData.has_quiz && quizData.quiz) {
+            // Quiz exists! Show it
+            btn.style.display = 'none';
+            document.getElementById('nextLessonBtn').style.display = 'none';
+            document.getElementById('startQuizBtn').style.display = 'inline-block';
+            
+            alert('Lesson marked as complete! 🎉\n\nA quiz is now available for this lesson.');
+            
+            // Automatically load the quiz
+            await loadQuiz(currentLessonId);
+            return;
+          }
+        }
+      } catch (quizError) {
+        console.log('No quiz available for this lesson:', quizError);
+      }
+      
+      // No quiz available, show next lesson button
       btn.style.display = 'none';
       document.getElementById('nextLessonBtn').style.display = 'inline-block';
       

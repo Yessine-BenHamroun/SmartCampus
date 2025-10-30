@@ -182,7 +182,7 @@ async function fetchAssignments() {
   try {
     const response = await fetch('http://localhost:8001/api/courses/instructor/my-courses/', {
       headers: {
-        'Authorization': 'Bearer {{ request.session.access_token }}'
+        'Authorization': 'Bearer {{ access_token }}'
       }
     });
     
@@ -299,7 +299,7 @@ async function deleteAssignment() {
     const response = await fetch(`http://localhost:8001/api/courses/instructor/assignment/${assignmentToDelete}/`, {
       method: 'DELETE',
       headers: {
-        'Authorization': 'Bearer {{ request.session.access_token }}'
+        'Authorization': 'Bearer {{ access_token }}'
       }
     });
     
