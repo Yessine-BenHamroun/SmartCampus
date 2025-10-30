@@ -76,19 +76,139 @@
       <div class="col-12">
         <h2 class="mb-4">Course Progress</h2>
         
-        <div class="empty-state text-center py-5">
-          <i class="bi bi-graph-up display-1 text-muted mb-3"></i>
-          <h3>No Progress Data Available</h3>
-          <p class="text-muted mb-4">Enroll in courses and start learning to see your progress here.</p>
-          <a href="{% url 'courses' %}" class="btn btn-primary">
-            <i class="bi bi-search"></i> Browse Courses
-          </a>
+        <div id="courseProgressList">
+          <div class="empty-state text-center py-5">
+            <i class="bi bi-graph-up display-1 text-muted mb-3"></i>
+            <h3>Loading progress...</h3>
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
   </div>
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+  try {
+    const response = await fetch('http://localhost:8001/api/courses/progress/my/', {
+      headers: {
+        'Authorization': 'Bearer {{ request.session.access_token }}'
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      displayProgress(data);
+    } else {
+      showEmptyState();
+    }
+  } catch (error) {
+    console.error('Error fetching progress:', error);
+    showEmptyState();
+  }
+});
+
+function displayProgress(data) {
+  const progressList = document.getElementById('courseProgressList');
+  
+  if (!data.progress || data.progress.length === 0) {
+    showEmptyState();
+    return;
+  }
+  
+  // Calculate overall stats
+  let totalTime = 0;
+  let totalLessons = 0;
+  let totalQuizzes = 0;
+  let totalAssignments = 0;
+  let totalPercentage = 0;
+  
+  data.progress.forEach(course => {
+    totalTime += course.time_spent_minutes || 0;
+    totalLessons += course.lessons_completed ? course.lessons_completed.length : 0;
+    totalQuizzes += course.quizzes_completed ? course.quizzes_completed.length : 0;
+    totalAssignments += course.assignments_completed ? course.assignments_completed.length : 0;
+    totalPercentage += course.completion_percentage || 0;
+  });
+  
+  const avgPercentage = Math.round(totalPercentage / data.progress.length);
+  const totalHours = Math.round(totalTime / 60);
+  
+  // Update overall stats
+  document.querySelector('.circular-progress').style.background = 
+    `conic-gradient(var(--accent-color) ${avgPercentage}%, #e9ecef ${avgPercentage}%)`;
+  document.querySelector('.progress-value .number').textContent = avgPercentage;
+  document.querySelectorAll('.stat-item h5')[0].textContent = totalHours + ' hours';
+  document.querySelectorAll('.stat-item h5')[1].textContent = totalLessons;
+  document.querySelectorAll('.stat-item h5')[2].textContent = totalQuizzes;
+  document.querySelectorAll('.stat-item h5')[3].textContent = totalAssignments;
+  
+  // Display course list
+  let html = '<div class="row">';
+  
+  data.progress.forEach(course => {
+    html += `
+      <div class="col-md-6 mb-4">
+        <div class="course-progress-card">
+          <div class="course-header">
+            <img src="${course.course_thumbnail || '/static/img/default-course.jpg'}" alt="${course.course_title}">
+            <div class="course-info">
+              <h5>${course.course_title}</h5>
+              <div class="progress-bar-container">
+                <div class="progress-bar" style="width: ${course.completion_percentage}%"></div>
+              </div>
+              <span class="progress-text">${course.completion_percentage}% Complete</span>
+            </div>
+          </div>
+          <div class="course-stats">
+            <div class="stat">
+              <i class="bi bi-journal-check"></i>
+              <span>${course.lessons_completed ? course.lessons_completed.length : 0} Lessons</span>
+            </div>
+            <div class="stat">
+              <i class="bi bi-patch-check"></i>
+              <span>${course.quizzes_completed ? course.quizzes_completed.length : 0} Quizzes</span>
+            </div>
+            <div class="stat">
+              <i class="bi bi-file-earmark-check"></i>
+              <span>${course.assignments_completed ? course.assignments_completed.length : 0} Assignments</span>
+            </div>
+          </div>
+          <div class="course-actions">
+            <a href="/course/${course.course_id}/progress/" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-graph-up"></i> View Details
+            </a>
+            <a href="/course/${course.course_id}/" class="btn btn-sm btn-primary">
+              <i class="bi bi-play-circle"></i> Continue Learning
+            </a>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  html += '</div>';
+  progressList.innerHTML = html;
+}
+
+function showEmptyState() {
+  const progressList = document.getElementById('courseProgressList');
+  progressList.innerHTML = `
+    <div class="empty-state text-center py-5">
+      <i class="bi bi-graph-up display-1 text-muted mb-3"></i>
+      <h3>No Progress Data Available</h3>
+      <p class="text-muted mb-4">Enroll in courses and start learning to see your progress here.</p>
+      <a href="{% url 'courses' %}" class="btn btn-primary">
+        <i class="bi bi-search"></i> Browse Courses
+      </a>
+    </div>
+  `;
+}
+</script>
 
 <style>
 .progress-card {
@@ -173,6 +293,88 @@
   background: white;
   border-radius: 10px;
   padding: 60px 20px;
+}
+
+.course-progress-card {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  transition: transform 0.3s;
+}
+
+.course-progress-card:hover {
+  transform: translateY(-5px);
+}
+
+.course-header {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.course-header img {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.course-info {
+  flex: 1;
+}
+
+.course-info h5 {
+  margin: 0 0 10px 0;
+  font-size: 1.1rem;
+}
+
+.progress-bar-container {
+  background: #e9ecef;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+
+.progress-bar {
+  background: var(--accent-color);
+  height: 100%;
+  transition: width 0.3s;
+}
+
+.progress-text {
+  font-size: 0.85rem;
+  color: var(--default-color);
+}
+
+.course-stats {
+  display: flex;
+  justify-content: space-around;
+  padding: 15px 0;
+  border-top: 1px solid #e9ecef;
+  border-bottom: 1px solid #e9ecef;
+  margin-bottom: 15px;
+}
+
+.course-stats .stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.course-stats .stat i {
+  color: var(--accent-color);
+}
+
+.course-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.course-actions .btn {
+  flex: 1;
 }
 </style>
 {% endblock %}

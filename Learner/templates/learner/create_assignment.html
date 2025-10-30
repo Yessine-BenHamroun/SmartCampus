@@ -397,11 +397,11 @@ function generateWithAI() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generating...';
   
-  fetch(`/api/courses/instructor/course/${courseId}/assignment/generate/`, {
+  fetch(`http://localhost:8001/api/courses/instructor/course/${courseId}/assignment/generate/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+      'Authorization': 'Bearer {{ access_token }}'
     },
     body: JSON.stringify({
       assignment_type: type,
@@ -483,11 +483,11 @@ function handleSubmit(e) {
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creating...';
   
-  fetch(`/api/courses/instructor/course/{{ course_id }}/assignment/create/`, {
+  fetch(`http://localhost:8001/api/courses/instructor/course/{{ course_id }}/assignment/create/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+      'Authorization': 'Bearer {{ access_token }}'
     },
     body: JSON.stringify(formData)
   })

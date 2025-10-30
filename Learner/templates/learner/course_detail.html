@@ -186,12 +186,12 @@
                 {% endif %}
               </div>
             {% elif is_enrolled %}
-              <a href="{% url 'my_learning' %}" class="btn btn-success btn-lg w-100 mb-2">
+              <a href="{% url 'course_learning' course.id %}" class="btn btn-success btn-lg w-100">
                 <i class="bi bi-play-circle"></i> Continue Learning
               </a>
               <p class="text-center text-muted"><i class="bi bi-check-circle"></i> You're enrolled!</p>
             {% else %}
-              <button id="enrollBtn" class="btn btn-primary btn-lg w-100 mb-2" onclick="enrollInCourse()">
+              <button id="enrollBtn" class="btn btn-primary btn-lg w-100" onclick="enrollInCourse()">
                 <i class="bi bi-bookmark-plus"></i> Start Learning
               </button>
               <p class="text-center text-muted">30-Day Money-Back Guarantee</p>
@@ -524,6 +524,16 @@
 </style>
 
 <script>
+// Debug: Log authentication status on page load
+console.log('=== COURSE DETAIL PAGE DEBUG ===');
+console.log('Is Authenticated:', {{ is_authenticated|yesno:"true,false" }});
+console.log('Current User:', '{% if current_user %}{{ current_user.email|default:"Unknown" }}{% else %}None{% endif %}');
+console.log('Access Token Exists:', '{{ request.session.access_token }}' ? 'Yes' : 'No');
+console.log('Access Token Length:', '{{ request.session.access_token }}'.length);
+console.log('Access Token (first 50 chars):', '{{ request.session.access_token }}'.substring(0, 50));
+console.log('Is Enrolled:', {{ is_enrolled|yesno:"true,false" }});
+console.log('================================');
+
 const courseId = '{{ course.id }}';
 
 async function enrollInCourse() {
@@ -531,22 +541,66 @@ async function enrollInCourse() {
   enrollBtn.disabled = true;
   enrollBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enrolling...';
 
+  // Debug: Check if token exists
+  let token = '{{ request.session.access_token }}';
+  const refreshToken = '{{ request.session.refresh_token }}';
+  console.log('Access token exists:', token ? 'Yes' : 'No');
+  console.log('Token length:', token.length);
+  
+  if (!token || token.length === 0) {
+    alert('You must be logged in to enroll. Please log in first.');
+    window.location.href = '{% url "login" %}?next={{ request.path }}';
+    return;
+  }
+
   try {
+    // First, try to refresh the token to ensure it's valid
+    console.log('Attempting to refresh token...');
+    try {
+      const refreshResponse = await fetch('http://localhost:8001/api/token/refresh/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          refresh: refreshToken
+        })
+      });
+      
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json();
+        token = refreshData.access;
+        console.log('Token refreshed successfully');
+        
+        // Update session token via a hidden form or AJAX call to backend
+        // For now, we'll use the new token directly
+      } else {
+        console.log('Token refresh failed, using existing token');
+      }
+    } catch (refreshError) {
+      console.log('Token refresh error:', refreshError);
+    }
+    
+    // Now try to enroll with the token
     const response = await fetch(`http://localhost:8001/api/courses/${courseId}/enroll/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer {{ request.session.access_token }}'
+        'Authorization': 'Bearer ' + token
       }
     });
 
     const data = await response.json();
+    
+    console.log('Enrollment Response Status:', response.status);
+    console.log('Enrollment Response Data:', data);
 
     if (response.ok) {
       alert('Successfully enrolled in the course!');
-      window.location.reload();
+      window.location.href = '{% url "course_learning" course.id %}';
     } else if (response.status === 401 || response.status === 403) {
-      alert('Please log in to enroll in this course');
+      console.error('Authentication error:', data);
+      alert('Authentication failed: ' + (data.detail || data.error || 'Please log in again'));
       window.location.href = '{% url "login" %}?next={{ request.path }}';
     } else {
       alert(data.error || 'Failed to enroll in course');

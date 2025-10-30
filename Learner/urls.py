@@ -62,4 +62,13 @@ urlpatterns = [
     path('instructor/manage-quizzes/', views.manage_quizzes_view, name='manage_quizzes'),
     path('instructor/manage-assignments/', views.manage_assignments_view, name='manage_assignments'),
     path('instructor/submission/<str:submission_id>/grade/', views.grade_submission_view, name='grade_submission'),
+    
+    # Progress & Feedback URLs
+    path('my-progress/', views.my_progress_view, name='my_progress'),
+    path('course/<str:course_id>/progress/', views.course_progress_view, name='course_progress'),
+    path('course/<str:course_id>/review/', views.submit_course_review_view, name='submit_course_review'),
+    path('instructor/<str:instructor_id>/course/<str:course_id>/review/', views.submit_instructor_review_view, name='submit_instructor_review'),
+    
+    # Course Learning
+    path('course/<str:course_id>/learn/', views.course_learning_view, name='course_learning'),
 ]

@@ -1,0 +1,493 @@
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}Review Instructor - SmartCampus{% endblock %}
+
+{% block content %}
+<section class="page-header section light-background">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1>Review Instructor</h1>
+        <p>{{ instructor.first_name }} {{ instructor.last_name }} - {{ course.title }}</p>
+      </div>
+      <a href="{% url 'course_detail' course_id %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Course
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="review-section section">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <div class="review-card">
+          <div class="instructor-info-header">
+            <div class="instructor-avatar">
+              <i class="bi bi-person-circle"></i>
+            </div>
+            <div>
+              <h3>{{ instructor.first_name }} {{ instructor.last_name }}</h3>
+              <p class="text-muted">{{ course.title }}</p>
+              <p class="text-muted"><small>Share your experience with this instructor</small></p>
+            </div>
+          </div>
+
+          <form id="instructorReviewForm">
+            {% csrf_token %}
+            
+            <!-- Overall Rating -->
+            <div class="mb-4">
+              <label class="form-label">Overall Rating *</label>
+              <div class="star-rating" data-rating-field="overall">
+                <input type="radio" name="rating" value="5" id="overall5">
+                <label for="overall5" title="5 stars">★</label>
+                <input type="radio" name="rating" value="4" id="overall4">
+                <label for="overall4" title="4 stars">★</label>
+                <input type="radio" name="rating" value="3" id="overall3">
+                <label for="overall3" title="3 stars">★</label>
+                <input type="radio" name="rating" value="2" id="overall2">
+                <label for="overall2" title="2 stars">★</label>
+                <input type="radio" name="rating" value="1" id="overall1">
+                <label for="overall1" title="1 star">★</label>
+              </div>
+            </div>
+
+            <!-- Detailed Ratings -->
+            <div class="detailed-ratings mb-4">
+              <h5 class="mb-3">Detailed Ratings</h5>
+              
+              <!-- Teaching Quality -->
+              <div class="rating-row mb-3">
+                <label class="form-label">Teaching Quality</label>
+                <div class="star-rating-small" data-rating-field="teaching">
+                  <input type="radio" name="teaching_quality" value="5" id="teaching5">
+                  <label for="teaching5">★</label>
+                  <input type="radio" name="teaching_quality" value="4" id="teaching4">
+                  <label for="teaching4">★</label>
+                  <input type="radio" name="teaching_quality" value="3" id="teaching3">
+                  <label for="teaching3">★</label>
+                  <input type="radio" name="teaching_quality" value="2" id="teaching2">
+                  <label for="teaching2">★</label>
+                  <input type="radio" name="teaching_quality" value="1" id="teaching1">
+                  <label for="teaching1">★</label>
+                </div>
+              </div>
+
+              <!-- Communication -->
+              <div class="rating-row mb-3">
+                <label class="form-label">Communication</label>
+                <div class="star-rating-small" data-rating-field="communication">
+                  <input type="radio" name="communication" value="5" id="comm5">
+                  <label for="comm5">★</label>
+                  <input type="radio" name="communication" value="4" id="comm4">
+                  <label for="comm4">★</label>
+                  <input type="radio" name="communication" value="3" id="comm3">
+                  <label for="comm3">★</label>
+                  <input type="radio" name="communication" value="2" id="comm2">
+                  <label for="comm2">★</label>
+                  <input type="radio" name="communication" value="1" id="comm1">
+                  <label for="comm1">★</label>
+                </div>
+              </div>
+
+              <!-- Course Content -->
+              <div class="rating-row mb-3">
+                <label class="form-label">Course Content</label>
+                <div class="star-rating-small" data-rating-field="content">
+                  <input type="radio" name="course_content" value="5" id="content5">
+                  <label for="content5">★</label>
+                  <input type="radio" name="course_content" value="4" id="content4">
+                  <label for="content4">★</label>
+                  <input type="radio" name="course_content" value="3" id="content3">
+                  <label for="content3">★</label>
+                  <input type="radio" name="course_content" value="2" id="content2">
+                  <label for="content2">★</label>
+                  <input type="radio" name="course_content" value="1" id="content1">
+                  <label for="content1">★</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Review Text -->
+            <div class="mb-4">
+              <label for="reviewText" class="form-label">Your Review *</label>
+              <textarea class="form-control" id="reviewText" name="review_text" rows="6" 
+                        placeholder="Share your thoughts about this instructor... (minimum 10 characters)" 
+                        required minlength="10"></textarea>
+              <div class="form-text">Minimum 10 characters</div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-send"></i> Submit Review
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Existing Reviews -->
+        <div class="existing-reviews mt-5">
+          <h3 class="mb-4">Instructor Reviews</h3>
+          <div id="reviewsList">
+            <div class="text-center py-4">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+.review-card {
+  background: white;
+  border-radius: 10px;
+  padding: 40px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.instructor-info-header {
+  display: flex;
+  gap: 20px;
+  padding-bottom: 30px;
+  border-bottom: 2px solid #e9ecef;
+  margin-bottom: 30px;
+}
+
+.instructor-avatar {
+  font-size: 5rem;
+  color: var(--accent-color);
+}
+
+.instructor-info-header h3 {
+  margin: 0 0 5px 0;
+}
+
+/* Star Rating */
+.star-rating {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  gap: 5px;
+  font-size: 3rem;
+}
+
+.star-rating input {
+  display: none;
+}
+
+.star-rating label {
+  color: #ddd;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.star-rating label:hover,
+.star-rating label:hover ~ label,
+.star-rating input:checked ~ label {
+  color: #ffc107;
+}
+
+/* Small Star Rating */
+.star-rating-small {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  gap: 3px;
+  font-size: 1.5rem;
+}
+
+.star-rating-small input {
+  display: none;
+}
+
+.star-rating-small label {
+  color: #ddd;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.star-rating-small label:hover,
+.star-rating-small label:hover ~ label,
+.star-rating-small input:checked ~ label {
+  color: #ffc107;
+}
+
+.detailed-ratings {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.rating-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rating-row label.form-label {
+  margin: 0;
+  font-weight: 600;
+}
+
+.existing-reviews {
+  background: white;
+  border-radius: 10px;
+  padding: 30px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.review-item {
+  padding: 20px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.review-item:last-child {
+  border-bottom: none;
+}
+
+.review-header {
+  margin-bottom: 15px;
+}
+
+.reviewer-name {
+  font-weight: 600;
+  color: var(--heading-color);
+  margin-bottom: 5px;
+}
+
+.review-course {
+  font-size: 0.9rem;
+  color: var(--default-color);
+  margin-bottom: 10px;
+}
+
+.review-ratings {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 10px;
+}
+
+.rating-detail {
+  font-size: 0.85rem;
+}
+
+.rating-detail .label {
+  color: var(--default-color);
+}
+
+.rating-detail .stars {
+  color: #ffc107;
+}
+
+.review-text {
+  color: var(--default-color);
+  line-height: 1.6;
+}
+
+.review-date {
+  font-size: 0.85rem;
+  color: var(--default-color);
+  margin-top: 10px;
+}
+
+.stats-summary {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.stats-row {
+  display: flex;
+  justify-content: space-around;
+  text-align: center;
+}
+
+.stat-item h4 {
+  margin: 0;
+  color: var(--heading-color);
+}
+
+.stat-item .stars {
+  color: #ffc107;
+  font-size: 1.5rem;
+}
+
+.stat-item p {
+  margin: 5px 0 0 0;
+  font-size: 0.9rem;
+  color: var(--default-color);
+}
+</style>
+
+<script>
+const instructorId = '{{ instructor_id }}';
+const courseId = '{{ course_id }}';
+
+// Load existing reviews
+document.addEventListener('DOMContentLoaded', async function() {
+  await loadReviews();
+});
+
+async function loadReviews() {
+  try {
+    const response = await fetch(`http://localhost:8001/api/courses/instructor/${instructorId}/reviews/`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      displayReviews(data);
+    }
+  } catch (error) {
+    console.error('Error loading reviews:', error);
+    document.getElementById('reviewsList').innerHTML = '<p class="text-muted">Unable to load reviews</p>';
+  }
+}
+
+function displayReviews(data) {
+  const reviewsList = document.getElementById('reviewsList');
+  
+  let html = '';
+  
+  // Display statistics
+  if (data.statistics && data.statistics.total_reviews > 0) {
+    html += `
+      <div class="stats-summary">
+        <div class="stats-row">
+          <div class="stat-item">
+            <h4>${data.statistics.average_rating.toFixed(1)} <span class="stars">★</span></h4>
+            <p>Overall</p>
+          </div>
+          <div class="stat-item">
+            <h4>${data.statistics.average_teaching_quality.toFixed(1)} <span class="stars">★</span></h4>
+            <p>Teaching</p>
+          </div>
+          <div class="stat-item">
+            <h4>${data.statistics.average_communication.toFixed(1)} <span class="stars">★</span></h4>
+            <p>Communication</p>
+          </div>
+          <div class="stat-item">
+            <h4>${data.statistics.average_course_content.toFixed(1)} <span class="stars">★</span></h4>
+            <p>Content</p>
+          </div>
+        </div>
+        <p class="text-center mt-3 mb-0">${data.statistics.total_reviews} review${data.statistics.total_reviews > 1 ? 's' : ''}</p>
+      </div>
+    `;
+  }
+  
+  // Display reviews
+  if (data.reviews && data.reviews.length > 0) {
+    data.reviews.forEach(review => {
+      const overallStars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
+      const date = new Date(review.created_at).toLocaleDateString();
+      
+      html += `
+        <div class="review-item">
+          <div class="review-header">
+            <div class="reviewer-name">${review.student_name || 'Anonymous'}</div>
+            <div class="review-course">Course: ${review.course_title || 'N/A'}</div>
+            <div class="review-ratings">
+              <div class="rating-detail">
+                <span class="label">Overall:</span>
+                <span class="stars">${overallStars}</span>
+              </div>
+              ${review.teaching_quality ? `
+                <div class="rating-detail">
+                  <span class="label">Teaching:</span>
+                  <span class="stars">${'★'.repeat(review.teaching_quality)}${'☆'.repeat(5 - review.teaching_quality)}</span>
+                </div>
+              ` : ''}
+              ${review.communication ? `
+                <div class="rating-detail">
+                  <span class="label">Communication:</span>
+                  <span class="stars">${'★'.repeat(review.communication)}${'☆'.repeat(5 - review.communication)}</span>
+                </div>
+              ` : ''}
+              ${review.course_content ? `
+                <div class="rating-detail">
+                  <span class="label">Content:</span>
+                  <span class="stars">${'★'.repeat(review.course_content)}${'☆'.repeat(5 - review.course_content)}</span>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+          <p class="review-text">${review.review_text || 'No comment provided'}</p>
+          <div class="review-date">${date}</div>
+        </div>
+      `;
+    });
+  } else {
+    html += '<p class="text-muted text-center">No reviews yet. Be the first to review!</p>';
+  }
+  
+  reviewsList.innerHTML = html;
+}
+
+// Handle form submission
+document.getElementById('instructorReviewForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+  const rating = document.querySelector('input[name="rating"]:checked');
+  const reviewText = document.getElementById('reviewText').value;
+  const teachingQuality = document.querySelector('input[name="teaching_quality"]:checked');
+  const communication = document.querySelector('input[name="communication"]:checked');
+  const courseContent = document.querySelector('input[name="course_content"]:checked');
+  
+  if (!rating) {
+    alert('Please select an overall rating');
+    return;
+  }
+  
+  if (reviewText.length < 10) {
+    alert('Review must be at least 10 characters long');
+    return;
+  }
+  
+  const submitBtn = this.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
+  
+  try {
+    const response = await fetch(`http://localhost:8001/api/courses/instructor/${instructorId}/course/${courseId}/review/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer {{ request.session.access_token }}'
+      },
+      body: JSON.stringify({
+        rating: parseInt(rating.value),
+        review_text: reviewText,
+        teaching_quality: teachingQuality ? parseInt(teachingQuality.value) : 0,
+        communication: communication ? parseInt(communication.value) : 0,
+        course_content: courseContent ? parseInt(courseContent.value) : 0
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      alert('Review submitted successfully!');
+      // Reload reviews
+      await loadReviews();
+      // Reset form
+      this.reset();
+    } else {
+      alert(data.error || 'Failed to submit review');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('An error occurred. Please try again.');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i class="bi bi-send"></i> Submit Review';
+  }
+});
+</script>
+{% endblock %}

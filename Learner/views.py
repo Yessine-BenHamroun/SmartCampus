@@ -98,11 +98,24 @@ def course_detail(request, course_id):
         import traceback
         traceback.print_exc()
     
+    # Get current user info
+    current_user = get_current_user(request)
+    is_logged_in = api_is_authenticated(request)
+    
     context = {
         'course': course,
         'modules': modules,
-        'is_enrolled': is_enrolled
+        'is_enrolled': is_enrolled,
+        'current_user': current_user,
+        'is_authenticated': is_logged_in
     }
+    
+    # Debug: Print session info
+    if is_logged_in:
+        print(f"✅ User is authenticated: {current_user.get('email') if current_user else 'Unknown'}")
+        print(f"🔑 Access token in session: {bool(request.session.get('access_token'))}")
+    else:
+        print("❌ User is NOT authenticated")
     
     return render(request, 'learner/course_detail.html', context)
 
@@ -854,7 +867,8 @@ def create_quiz_view(request, lesson_id):
     context = {
         'lesson_id': lesson_id,
         'course_id': course_id,
-        'lesson': lesson
+        'lesson': lesson,
+        'access_token': access_token
     }
     
     return render(request, 'learner/create_quiz.html', context)
@@ -913,7 +927,8 @@ def create_assignment_view(request, course_id):
     
     context = {
         'course_id': course_id,
-        'course': course
+        'course': course,
+        'access_token': access_token
     }
     
     return render(request, 'learner/create_assignment.html', context)
@@ -985,3 +1000,177 @@ def grade_submission_view(request, submission_id):
     }
     
     return render(request, 'learner/grade_submission.html', context)
+
+
+@api_login_required
+def my_progress_view(request):
+    """View student's progress across all courses"""
+    return render(request, 'learner/my_progress.html')
+
+
+@api_login_required
+def course_progress_view(request, course_id):
+    """View detailed progress for a specific course"""
+    import requests
+    
+    access_token = get_access_token(request)
+    course = None
+    
+    try:
+        course_response = requests.get(
+            f'http://localhost:8001/api/courses/{course_id}/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        if course_response.status_code == 200:
+            course = course_response.json()
+    except Exception as e:
+        messages.error(request, f'Error fetching course: {str(e)}')
+    
+    context = {
+        'course': course,
+        'course_id': course_id
+    }
+    
+    return render(request, 'learner/course_progress.html', context)
+
+
+@api_login_required
+def submit_course_review_view(request, course_id):
+    """Submit a review for a course"""
+    import requests
+    
+    access_token = get_access_token(request)
+    course = None
+    
+    try:
+        course_response = requests.get(
+            f'http://localhost:8001/api/courses/{course_id}/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        if course_response.status_code == 200:
+            course = course_response.json()
+    except Exception as e:
+        messages.error(request, f'Error fetching course: {str(e)}')
+    
+    context = {
+        'course': course,
+        'course_id': course_id
+    }
+    
+    return render(request, 'learner/submit_course_review.html', context)
+
+
+@api_login_required
+def submit_instructor_review_view(request, instructor_id, course_id):
+    """Submit a review for an instructor"""
+    import requests
+    
+    access_token = get_access_token(request)
+    course = None
+    instructor = None
+    
+    try:
+        course_response = requests.get(
+            f'http://localhost:8001/api/courses/{course_id}/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        if course_response.status_code == 200:
+            course = course_response.json()
+            
+        # Get instructor info from users API
+        instructor_response = requests.get(
+            f'http://localhost:8001/api/users/{instructor_id}/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        if instructor_response.status_code == 200:
+            instructor = instructor_response.json()
+    except Exception as e:
+        messages.error(request, f'Error fetching data: {str(e)}')
+    
+    context = {
+        'course': course,
+        'instructor': instructor,
+        'course_id': course_id,
+        'instructor_id': instructor_id
+    }
+    
+    return render(request, 'learner/submit_instructor_review.html', context)
+
+
+@api_login_required
+def course_learning_view(request, course_id):
+    """Main course learning page with lesson player and progress tracking"""
+    import requests
+    
+    access_token = get_access_token(request)
+    course = None
+    modules = []
+    current_lesson = None
+    progress = None
+    
+    try:
+        # Fetch course details
+        course_response = requests.get(
+            f'http://localhost:8001/api/courses/{course_id}/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        if course_response.status_code == 200:
+            course = course_response.json().get('course')
+        
+        # Fetch modules and lessons
+        modules_response = requests.get(
+            f'http://localhost:8001/api/courses/{course_id}/modules/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        if modules_response.status_code == 200:
+            modules = modules_response.json().get('modules', [])
+            
+            # Fetch lessons for each module
+            for module in modules:
+                lessons_response = requests.get(
+                    f'http://localhost:8001/api/courses/module/{module["id"]}/lessons/',
+                    headers={'Authorization': f'Bearer {access_token}'}
+                )
+                if lessons_response.status_code == 200:
+                    module['lessons'] = lessons_response.json().get('lessons', [])
+                else:
+                    module['lessons'] = []
+        
+        # Fetch student progress
+        progress_response = requests.get(
+            f'http://localhost:8001/api/courses/{course_id}/progress/details/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        if progress_response.status_code == 200:
+            progress = progress_response.json().get('progress', {})
+        
+        # Determine current lesson (first incomplete lesson or first lesson)
+        completed_lessons = progress.get('lessons_completed', []) if progress else []
+        
+        for module in modules:
+            for lesson in module.get('lessons', []):
+                if lesson['id'] not in completed_lessons:
+                    current_lesson = lesson
+                    break
+            if current_lesson:
+                break
+        
+        # If all lessons completed, show first lesson
+        if not current_lesson and modules and modules[0].get('lessons'):
+            current_lesson = modules[0]['lessons'][0]
+            
+    except Exception as e:
+        messages.error(request, f'Error loading course: {str(e)}')
+        print(f"Error in course_learning_view: {str(e)}")
+        import traceback
+        traceback.print_exc()
+    
+    context = {
+        'course': course,
+        'modules': modules,
+        'current_lesson': current_lesson,
+        'progress': progress,
+        'course_id': course_id
+    }
+    
+    return render(request, 'learner/course_learning.html', context)
