@@ -479,6 +479,9 @@ def my_learning_view(request):
     
     user = get_current_user(request)
     enrolled_courses = []
+    completed_courses = 0
+    in_progress_courses = 0
+    certificates_earned = 0
     
     if user:
         try:
@@ -503,6 +506,34 @@ def my_learning_view(request):
                         if course:
                             course['progress'] = enrollment.get('progress', 0)
                             course['enrollment_date'] = enrollment.get('enrolled_at')
+                            
+                            # Fetch detailed progress info for richer dashboard data
+                            progress_info = None
+                            try:
+                                progress_resp = requests.get(
+                                    f'http://localhost:8001/api/courses/{course_id}/progress/details/',
+                                    headers={'Authorization': f'Bearer {access_token}'}
+                                )
+                                if progress_resp.status_code == 200:
+                                    progress_payload = progress_resp.json()
+                                    progress_info = progress_payload.get('progress')
+                            except Exception as progress_error:
+                                print(f"Error fetching progress details for course {course_id}: {progress_error}")
+                            
+                            if progress_info:
+                                course['progress_info'] = progress_info
+                                completion_percentage = progress_info.get('completion_percentage', 0) or 0
+                            else:
+                                completion_percentage = course.get('progress', 0) or 0
+                            
+                            if enrollment.get('completed') or completion_percentage >= 100:
+                                completed_courses += 1
+                            elif completion_percentage > 0:
+                                in_progress_courses += 1
+                            
+                            if enrollment.get('certificate_issued'):
+                                certificates_earned += 1
+                            
                             enrolled_courses.append(course)
                             
         except Exception as e:
@@ -510,7 +541,10 @@ def my_learning_view(request):
     
     context = {
         'page_title': 'My Learning Dashboard',
-        'enrolled_courses': enrolled_courses
+        'enrolled_courses': enrolled_courses,
+        'completed_courses': completed_courses,
+        'in_progress_courses': in_progress_courses,
+        'certificates_earned': certificates_earned
     }
     
     return render(request, 'learner/my_learning.html', context)
@@ -519,14 +553,103 @@ def my_learning_view(request):
 @api_login_required
 def my_progress_view(request):
     """Student progress tracking"""
-    user = get_current_user(request)
-    
-    # TODO: Fetch progress data from backend API
+    import requests
+
+    access_token = get_access_token(request)
+    progress_entries = []
+    total_minutes = 0
+    total_lessons = 0
+    total_quizzes = 0
+    total_assignments = 0
+    average_percentage = 0
+
+    try:
+        response = requests.get(
+            'http://localhost:8001/api/courses/progress/my/',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+
+        if response.status_code == 200:
+            payload = response.json()
+            api_entries = payload.get('progress', []) or []
+
+            enriched_entries = []
+            for entry in api_entries:
+                lessons = entry.get('lessons_completed') or []
+                quizzes = entry.get('quizzes_completed') or []
+                assignments = entry.get('assignments_completed') or []
+
+                minutes_raw = entry.get('time_spent_minutes', 0)
+                try:
+                    minutes = float(minutes_raw) if minutes_raw is not None else 0
+                except (TypeError, ValueError):
+                    minutes = 0
+
+                completion_raw = entry.get('completion_percentage', 0)
+                try:
+                    completion = float(completion_raw) if completion_raw is not None else 0
+                except (TypeError, ValueError):
+                    completion = 0
+
+                course_id = entry.get('course_id')
+                if isinstance(course_id, dict) and course_id.get('$oid'):
+                    course_id = course_id['$oid']
+
+                course_title = 'Course'
+                course_thumbnail = '/static/img/education/courses-3.webp'
+                try:
+                    if course_id:
+                        course_resp = requests.get(
+                            f'http://localhost:8001/api/courses/{course_id}/',
+                            headers={'Authorization': f'Bearer {access_token}'}
+                        )
+                        if course_resp.status_code == 200:
+                            course_payload = course_resp.json().get('course', {})
+                            course_title = course_payload.get('title') or course_title
+                            course_thumbnail = course_payload.get('thumbnail_url') or course_payload.get('thumbnail') or course_thumbnail
+                except Exception as course_error:
+                    print(f"Error fetching course {course_id} details: {course_error}")
+
+                total_minutes += minutes
+                total_lessons += len(lessons)
+                total_quizzes += len(quizzes)
+                total_assignments += len(assignments)
+                average_percentage += completion
+
+                enriched_entries.append({
+                    **entry,
+                    'course_id': course_id,
+                    'course_title': course_title,
+                    'course_thumbnail': course_thumbnail,
+                    'lessons_completed_count': len(lessons),
+                    'quizzes_completed_count': len(quizzes),
+                    'assignments_completed_count': len(assignments),
+                    'time_spent_minutes': minutes,
+                    'completion_percentage': completion,
+                    'lessons_completed': lessons,
+                    'quizzes_completed': quizzes,
+                    'assignments_completed': assignments
+                })
+
+            progress_entries = enriched_entries
+
+            if progress_entries:
+                average_percentage = round(average_percentage / len(progress_entries), 1)
+    except Exception as e:
+        print(f"Error fetching progress data: {str(e)}")
+
+    total_hours = round(total_minutes / 60, 1) if total_minutes else 0
+
     context = {
         'page_title': 'My Progress',
-        'progress_data': []  # Will be populated from API
+        'progress_entries': progress_entries,
+        'total_learning_hours': total_hours,
+        'total_lessons_completed': total_lessons,
+        'total_quizzes_passed': total_quizzes,
+        'total_assignments_submitted': total_assignments,
+        'average_completion_percentage': average_percentage
     }
-    
+
     return render(request, 'learner/my_progress.html', context)
 
 

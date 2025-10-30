@@ -96,12 +96,26 @@
         </div>
         
         <div class="lesson-actions">
+          <button class="btn btn-outline-primary btn-lg" id="startQuizBtn" onclick="showLessonQuiz()" style="display: none;">
+            <i class="bi bi-question-circle"></i> Take Quiz
+          </button>
+          <button class="btn btn-outline-secondary btn-lg" id="toggleAssignmentsBtn" onclick="toggleAssignmentsSection()" style="display: none;">
+            <i class="bi bi-journal-text"></i> View Assignments
+          </button>
           <button class="btn btn-success btn-lg" id="markCompleteBtn" onclick="markLessonComplete()">
             <i class="bi bi-check-circle"></i> Mark as Complete
           </button>
           <button class="btn btn-primary btn-lg" id="nextLessonBtn" onclick="goToNextLesson()" style="display: none;">
             Next Lesson <i class="bi bi-arrow-right"></i>
           </button>
+        </div>
+
+        <div class="assignments-section" id="assignmentsSection" style="display: none;">
+          <div class="assignments-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-clipboard-check"></i> Course Assignments</h5>
+            <span class="text-muted small" id="assignmentsCount">0 assignments</span>
+          </div>
+          <div id="assignmentsList" class="assignments-list"></div>
         </div>
       {% else %}
         <div class="empty-state">
@@ -410,6 +424,8 @@
 }
 </style>
 
+{{ progress|json_script:"progress-data" }}
+
 <script>
 const courseId = '{{ course_id }}';
 const accessToken = '{{ request.session.access_token }}';
@@ -417,6 +433,14 @@ let currentLessonId = '{{ current_lesson.id }}';
 let lessonStartTime = Date.now();
 let timerInterval = null;
 let elapsedSeconds = 0;
+let courseAssignments = [];
+let lessonQuizzes = {};
+
+const progressData = JSON.parse(document.getElementById('progress-data').textContent || '{}');
+const completedLessons = new Set(progressData.lessons_completed || []);
+const passedQuizIds = new Set(
+  (progressData.quizzes_completed || []).map(entry => entry.quiz_id || entry)
+);
 
 // Start timer
 function startTimer() {
@@ -450,7 +474,7 @@ async function loadLesson(lessonId, lessonTitle, contentType) {
   
   currentLessonId = lessonId;
   document.getElementById('currentLessonTitle').textContent = lessonTitle;
-  
+
   // Update active state in sidebar
   document.querySelectorAll('.lesson-nav-item').forEach(item => {
     item.classList.remove('active');
@@ -458,7 +482,7 @@ async function loadLesson(lessonId, lessonTitle, contentType) {
       item.classList.add('active');
     }
   });
-  
+
   // Show loading
   document.getElementById('lessonPlayer').innerHTML = `
     <div class="loading-state">
@@ -797,17 +821,25 @@ async function markLessonComplete() {
 
 // Go to next lesson
 function goToNextLesson() {
-  const currentItem = document.querySelector(`[data-lesson-id="${currentLessonId}"]`);
-  const nextItem = currentItem ? currentItem.nextElementSibling : null;
-  
-  if (nextItem && nextItem.classList.contains('lesson-nav-item')) {
+  const lessonItems = Array.from(document.querySelectorAll('.lesson-nav-item'));
+  const currentIndex = lessonItems.findIndex(item => item.dataset.lessonId === currentLessonId);
+
+  if (currentIndex === -1) {
+    alert('Could not determine the next lesson. Please select one from the sidebar.');
+    return;
+  }
+
+  const nextItem = lessonItems[currentIndex + 1];
+
+  if (nextItem) {
     nextItem.click();
     document.getElementById('nextLessonBtn').style.display = 'none';
-    document.getElementById('markCompleteBtn').style.display = 'inline-block';
-    document.getElementById('markCompleteBtn').disabled = false;
-    document.getElementById('markCompleteBtn').innerHTML = '<i class="bi bi-check-circle"></i> Mark as Complete';
+    const markBtn = document.getElementById('markCompleteBtn');
+    markBtn.style.display = 'inline-block';
+    markBtn.disabled = false;
+    markBtn.innerHTML = '<i class="bi bi-check-circle"></i> Mark as Complete';
   } else {
-    alert('Congratulations! You have completed all lessons in this module! 🎉');
+    alert('Congratulations! You have completed all lessons in this course! 🎉');
   }
 }
 

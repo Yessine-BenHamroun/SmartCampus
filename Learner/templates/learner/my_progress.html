@@ -27,9 +27,9 @@
       <div class="col-lg-4">
         <div class="progress-card">
           <h4>Overall Progress</h4>
-          <div class="circular-progress">
+          <div class="circular-progress" style="background: conic-gradient(var(--accent-color) {{ average_completion_percentage|default:0 }}%, #e9ecef {{ average_completion_percentage|default:0 }}%);">
             <div class="progress-value">
-              <span class="number">0</span>
+              <span class="number">{{ average_completion_percentage|default:0 }}</span>
               <span class="percent">%</span>
             </div>
           </div>
@@ -42,28 +42,28 @@
           <div class="stat-item">
             <i class="bi bi-clock"></i>
             <div>
-              <h5>0 hours</h5>
+              <h5>{{ total_learning_hours|default:0 }} hours</h5>
               <p>Total Learning Time</p>
             </div>
           </div>
           <div class="stat-item">
             <i class="bi bi-journal-check"></i>
             <div>
-              <h5>0</h5>
+              <h5>{{ total_lessons_completed|default:0 }}</h5>
               <p>Lessons Completed</p>
             </div>
           </div>
           <div class="stat-item">
             <i class="bi bi-patch-check"></i>
             <div>
-              <h5>0</h5>
+              <h5>{{ total_quizzes_passed|default:0 }}</h5>
               <p>Quizzes Passed</p>
             </div>
           </div>
           <div class="stat-item">
             <i class="bi bi-file-earmark-check"></i>
             <div>
-              <h5>0</h5>
+              <h5>{{ total_assignments_submitted|default:0 }}</h5>
               <p>Assignments Submitted</p>
             </div>
           </div>
@@ -75,140 +75,62 @@
     <div class="row" data-aos="fade-up" data-aos-delay="100">
       <div class="col-12">
         <h2 class="mb-4">Course Progress</h2>
-        
-        <div id="courseProgressList">
+        {% if progress_entries %}
+          <div class="row">
+            {% for course in progress_entries %}
+            <div class="col-md-6 mb-4">
+              <div class="course-progress-card">
+                <div class="course-header">
+                  <img src="{{ course.course_thumbnail|default:'/static/img/default-course.jpg' }}" alt="{{ course.course_title }}">
+                  <div class="course-info">
+                    <h5>{{ course.course_title|default:'Course' }}</h5>
+                    <div class="progress-bar-container">
+                      <div class="progress-bar" style="width: {{ course.completion_percentage|default:0 }}%"></div>
+                    </div>
+                    <span class="progress-text">{{ course.completion_percentage|default:0 }}% Complete</span>
+                  </div>
+                </div>
+                <div class="course-stats">
+                  <div class="stat">
+                    <i class="bi bi-journal-check"></i>
+                    <span>{{ course.lessons_completed|default:list|length }} Lessons</span>
+                  </div>
+                  <div class="stat">
+                    <i class="bi bi-patch-check"></i>
+                    <span>{{ course.quizzes_completed|default:list|length }} Quizzes</span>
+                  </div>
+                  <div class="stat">
+                    <i class="bi bi-file-earmark-check"></i>
+                    <span>{{ course.assignments_completed|default:list|length }} Assignments</span>
+                  </div>
+                </div>
+                <div class="course-actions">
+                  <a href="{% url 'course_progress' course.course_id %}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-graph-up"></i> View Details
+                  </a>
+                  <a href="{% url 'course_learning' course.course_id %}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-play-circle"></i> Continue Learning
+                  </a>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
           <div class="empty-state text-center py-5">
             <i class="bi bi-graph-up display-1 text-muted mb-3"></i>
-            <h3>Loading progress...</h3>
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">Loading...</span>
-            </div>
+            <h3>No Progress Data Available</h3>
+            <p class="text-muted mb-4">Enroll in courses and start learning to see your progress here.</p>
+            <a href="{% url 'courses' %}" class="btn btn-primary">
+              <i class="bi bi-search"></i> Browse Courses
+            </a>
           </div>
-        </div>
+        {% endif %}
       </div>
     </div>
 
   </div>
 </section>
-
-<script>
-document.addEventListener('DOMContentLoaded', async function() {
-  try {
-    const response = await fetch('http://localhost:8001/api/courses/progress/my/', {
-      headers: {
-        'Authorization': 'Bearer {{ request.session.access_token }}'
-      }
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      displayProgress(data);
-    } else {
-      showEmptyState();
-    }
-  } catch (error) {
-    console.error('Error fetching progress:', error);
-    showEmptyState();
-  }
-});
-
-function displayProgress(data) {
-  const progressList = document.getElementById('courseProgressList');
-  
-  if (!data.progress || data.progress.length === 0) {
-    showEmptyState();
-    return;
-  }
-  
-  // Calculate overall stats
-  let totalTime = 0;
-  let totalLessons = 0;
-  let totalQuizzes = 0;
-  let totalAssignments = 0;
-  let totalPercentage = 0;
-  
-  data.progress.forEach(course => {
-    totalTime += course.time_spent_minutes || 0;
-    totalLessons += course.lessons_completed ? course.lessons_completed.length : 0;
-    totalQuizzes += course.quizzes_completed ? course.quizzes_completed.length : 0;
-    totalAssignments += course.assignments_completed ? course.assignments_completed.length : 0;
-    totalPercentage += course.completion_percentage || 0;
-  });
-  
-  const avgPercentage = Math.round(totalPercentage / data.progress.length);
-  const totalHours = Math.round(totalTime / 60);
-  
-  // Update overall stats
-  document.querySelector('.circular-progress').style.background = 
-    `conic-gradient(var(--accent-color) ${avgPercentage}%, #e9ecef ${avgPercentage}%)`;
-  document.querySelector('.progress-value .number').textContent = avgPercentage;
-  document.querySelectorAll('.stat-item h5')[0].textContent = totalHours + ' hours';
-  document.querySelectorAll('.stat-item h5')[1].textContent = totalLessons;
-  document.querySelectorAll('.stat-item h5')[2].textContent = totalQuizzes;
-  document.querySelectorAll('.stat-item h5')[3].textContent = totalAssignments;
-  
-  // Display course list
-  let html = '<div class="row">';
-  
-  data.progress.forEach(course => {
-    html += `
-      <div class="col-md-6 mb-4">
-        <div class="course-progress-card">
-          <div class="course-header">
-            <img src="${course.course_thumbnail || '/static/img/default-course.jpg'}" alt="${course.course_title}">
-            <div class="course-info">
-              <h5>${course.course_title}</h5>
-              <div class="progress-bar-container">
-                <div class="progress-bar" style="width: ${course.completion_percentage}%"></div>
-              </div>
-              <span class="progress-text">${course.completion_percentage}% Complete</span>
-            </div>
-          </div>
-          <div class="course-stats">
-            <div class="stat">
-              <i class="bi bi-journal-check"></i>
-              <span>${course.lessons_completed ? course.lessons_completed.length : 0} Lessons</span>
-            </div>
-            <div class="stat">
-              <i class="bi bi-patch-check"></i>
-              <span>${course.quizzes_completed ? course.quizzes_completed.length : 0} Quizzes</span>
-            </div>
-            <div class="stat">
-              <i class="bi bi-file-earmark-check"></i>
-              <span>${course.assignments_completed ? course.assignments_completed.length : 0} Assignments</span>
-            </div>
-          </div>
-          <div class="course-actions">
-            <a href="/course/${course.course_id}/progress/" class="btn btn-sm btn-outline-primary">
-              <i class="bi bi-graph-up"></i> View Details
-            </a>
-            <a href="/course/${course.course_id}/" class="btn btn-sm btn-primary">
-              <i class="bi bi-play-circle"></i> Continue Learning
-            </a>
-          </div>
-        </div>
-      </div>
-    `;
-  });
-  
-  html += '</div>';
-  progressList.innerHTML = html;
-}
-
-function showEmptyState() {
-  const progressList = document.getElementById('courseProgressList');
-  progressList.innerHTML = `
-    <div class="empty-state text-center py-5">
-      <i class="bi bi-graph-up display-1 text-muted mb-3"></i>
-      <h3>No Progress Data Available</h3>
-      <p class="text-muted mb-4">Enroll in courses and start learning to see your progress here.</p>
-      <a href="{% url 'courses' %}" class="btn btn-primary">
-        <i class="bi bi-search"></i> Browse Courses
-      </a>
-    </div>
-  `;
-}
-</script>
 
 <style>
 .progress-card {
