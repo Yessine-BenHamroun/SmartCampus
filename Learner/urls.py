@@ -70,6 +70,7 @@ urlpatterns = [
     path('instructor/certification/<str:certification_id>/delete/', views.delete_certification_view, name='delete_certification'),
     path('instructor/certification/<str:certification_id>/steps/', views.manage_certification_steps_view, name='manage_certification_steps'),
     path('instructor/certification/<str:certification_id>/steps/add/', views.add_certification_step_view, name='add_certification_step'),
+    path('instructor/certification/step/<str:step_id>/update/', views.update_certification_step_view, name='update_certification_step'),
     path('instructor/certification/step/<str:step_id>/delete/', views.delete_certification_step_view, name='delete_certification_step'),
     path('instructor/certification/<str:certification_id>/exam/create/', views.create_certification_exam_view, name='create_certification_exam'),
     

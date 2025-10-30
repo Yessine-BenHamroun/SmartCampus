@@ -1,18 +1,19 @@
-{% extends 'learner/base.html' %}
-{% load static %}
-
-{% block title %}AI Certification Trends 2025 - SmartCampus{% endblock %}
-
-{% block body_class %}certification-trends-page{% endblock %}
-
-{% block content %}
+{% extends 'learner/base.html' %} {% load static %} {% block title %}AI
+Certification Trends 2025 - SmartCampus{% endblock %} {% block body_class
+%}certification-trends-page{% endblock %} {% block content %}
 <!-- Page Header -->
 <section class="page-header section light-background">
   <div class="container">
     <div class="row">
       <div class="col-lg-10" data-aos="fade-up">
-        <h1><i class="bi bi-graph-up-arrow"></i> AI-Powered Certification Trends 2025</h1>
-        <p class="lead">Discover the most in-demand certifications based on real market data and AI analysis</p>
+        <h1>
+          <i class="bi bi-graph-up-arrow"></i> AI-Powered Certification Trends
+          2025
+        </h1>
+        <p class="lead">
+          Discover the most in-demand certifications based on real market data
+          and AI analysis
+        </p>
       </div>
     </div>
   </div>
@@ -21,14 +22,13 @@
 <!-- Trends Section -->
 <section class="trends-section py-5">
   <div class="container">
-    
     {% if error %}
     <!-- Error Message -->
     <div class="alert alert-warning">
       <i class="bi bi-exclamation-triangle"></i> {{ error }}
     </div>
     {% else %}
-    
+
     <!-- Info Card -->
     <div class="row mb-5">
       <div class="col-lg-12">
@@ -40,13 +40,17 @@
                   <i class="bi bi-robot"></i> Powered by Machine Learning
                 </h5>
                 <p class="mb-0">
-                  Our AI analyzes thousands of job postings from LinkedIn, salary data, and market growth trends 
-                  to recommend certifications that will maximize your career potential in 2025.
+                  Our AI analyzes thousands of job postings from LinkedIn,
+                  salary data, and market growth trends to recommend
+                  certifications that will maximize your career potential in
+                  2025.
                 </p>
               </div>
               <div class="col-md-4 text-end">
                 <div class="stats">
-                  <h3 class="text-primary mb-0">{{ recommendations|length }}</h3>
+                  <h3 class="text-primary mb-0">
+                    {{ recommendations|length }}
+                  </h3>
                   <small class="text-muted">Top Recommendations</small>
                 </div>
               </div>
@@ -55,51 +59,62 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Recommendations Grid -->
     <div class="row">
       {% for rec in recommendations %}
-      <div class="col-lg-6 mb-4" data-aos="fade-up" data-aos-delay="{{ forloop.counter0|add:0|stringformat:'d' }}00">
-        <div class="cert-card h-100 {% if rec.priority == 'HIGH' %}priority-high{% elif rec.priority == 'RECOMMENDED' %}priority-medium{% else %}priority-low{% endif %}">
+      <div
+        class="col-lg-6 mb-4"
+        data-aos="fade-up"
+        data-aos-delay="{{ forloop.counter0|add:0|stringformat:'d' }}00"
+      >
+        <div
+          class="cert-card h-100 {% if rec.priority == 'HIGH' %}priority-high{% elif rec.priority == 'RECOMMENDED' %}priority-medium{% else %}priority-low{% endif %}"
+        >
           <!-- Priority Badge -->
           <div class="priority-badge">
             {% if rec.priority == 'HIGH' %}
-              <span class="badge bg-danger">
-                <i class="bi bi-fire"></i> HIGH PRIORITY
-              </span>
+            <span class="badge bg-danger">
+              <i class="bi bi-fire"></i> HIGH PRIORITY
+            </span>
             {% elif rec.priority == 'RECOMMENDED' %}
-              <span class="badge bg-warning">
-                <i class="bi bi-star-fill"></i> RECOMMENDED
-              </span>
+            <span class="badge bg-warning">
+              <i class="bi bi-star-fill"></i> RECOMMENDED
+            </span>
             {% else %}
-              <span class="badge bg-info">
-                <i class="bi bi-graph-up"></i> GROWING
-              </span>
+            <span class="badge bg-info">
+              <i class="bi bi-graph-up"></i> GROWING
+            </span>
             {% endif %}
           </div>
-          
+
           <div class="card-body">
             <!-- Certification Title -->
             <h4 class="cert-title">
               <i class="bi bi-patch-check-fill text-primary"></i>
               {{ rec.certification }}
             </h4>
-            
+
             <!-- AI Score -->
             <div class="ai-score-container mb-3">
-              <div class="d-flex justify-content-between align-items-center mb-2">
+              <div
+                class="d-flex justify-content-between align-items-center mb-2"
+              >
                 <span class="text-muted">AI Recommendation Score</span>
                 <span class="score-value">{{ rec.ai_score }}/1.0</span>
               </div>
-              <div class="progress" style="height: 10px;">
-                <div class="progress-bar bg-primary" role="progressbar" 
-                     style="width: {{ rec.ai_score|floatformat:0|add:'0' }}%"
-                     aria-valuenow="{{ rec.ai_score|floatformat:0 }}" 
-                     aria-valuemin="0" aria-valuemax="100">
-                </div>
+              <div class="progress" style="height: 10px">
+                <div
+                  class="progress-bar bg-primary"
+                  role="progressbar"
+                  style="width: {{ rec.ai_score|floatformat:0|add:'0' }}%"
+                  aria-valuenow="{{ rec.ai_score|floatformat:0 }}"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                ></div>
               </div>
             </div>
-            
+
             <!-- Metrics Grid -->
             <div class="metrics-grid">
               <div class="metric-item">
@@ -108,31 +123,37 @@
                 </div>
                 <div class="metric-content">
                   <div class="metric-label">Market Demand</div>
-                  <div class="metric-value">{{ rec.demand_score|floatformat:0 }}%</div>
+                  <div class="metric-value">
+                    {{ rec.demand_score|floatformat:0 }}%
+                  </div>
                 </div>
               </div>
-              
+
               <div class="metric-item">
                 <div class="metric-icon">
                   <i class="bi bi-cash-stack text-success"></i>
                 </div>
                 <div class="metric-content">
                   <div class="metric-label">Salary Impact</div>
-                  <div class="metric-value">{{ rec.salary_impact|floatformat:0 }}%</div>
+                  <div class="metric-value">
+                    {{ rec.salary_impact|floatformat:0 }}%
+                  </div>
                 </div>
               </div>
-              
+
               <div class="metric-item">
                 <div class="metric-icon">
                   <i class="bi bi-graph-up-arrow text-warning"></i>
                 </div>
                 <div class="metric-content">
                   <div class="metric-label">Growth Rate</div>
-                  <div class="metric-value">+{{ rec.growth_rate|floatformat:0 }}%</div>
+                  <div class="metric-value">
+                    +{{ rec.growth_rate|floatformat:0 }}%
+                  </div>
                 </div>
               </div>
             </div>
-            
+
             <!-- Required Skills -->
             <div class="skills-section mt-3">
               <h6 class="text-muted mb-2">
@@ -144,7 +165,7 @@
                 {% endfor %}
               </div>
             </div>
-            
+
             <!-- Action Button -->
             <div class="mt-4">
               <a href="{% url 'courses' %}" class="btn btn-primary w-100">
@@ -157,13 +178,16 @@
       {% empty %}
       <div class="col-12">
         <div class="text-center py-5">
-          <i class="bi bi-hourglass-split" style="font-size: 4rem; color: #ccc;"></i>
+          <i
+            class="bi bi-hourglass-split"
+            style="font-size: 4rem; color: #ccc"
+          ></i>
           <h4 class="mt-3">Loading recommendations...</h4>
         </div>
       </div>
       {% endfor %}
     </div>
-    
+
     <!-- CTA Section -->
     <div class="row mt-5">
       <div class="col-lg-12">
@@ -171,18 +195,25 @@
           <div class="card-body text-center py-5">
             <h3 class="mb-3">Ready to Boost Your Career?</h3>
             <p class="lead mb-4">
-              Start your certification journey today and stay ahead of the market trends
+              Start your certification journey today and stay ahead of the
+              market trends
             </p>
             <div class="d-flex gap-3 justify-content-center">
               <a href="{% url 'courses' %}" class="btn btn-light btn-lg">
                 <i class="bi bi-search"></i> Browse Courses
               </a>
               {% if user.is_authenticated %}
-              <a href="{% url 'my_learning' %}" class="btn btn-outline-light btn-lg">
+              <a
+                href="{% url 'my_learning' %}"
+                class="btn btn-outline-light btn-lg"
+              >
                 <i class="bi bi-person-workspace"></i> My Learning
               </a>
               {% else %}
-              <a href="{% url 'register' %}" class="btn btn-outline-light btn-lg">
+              <a
+                href="{% url 'register' %}"
+                class="btn btn-outline-light btn-lg"
+              >
                 <i class="bi bi-person-plus"></i> Sign Up Free
               </a>
               {% endif %}
@@ -191,165 +222,165 @@
         </div>
       </div>
     </div>
-    
+
     {% endif %}
   </div>
 </section>
 
 <style>
-/* Card Styles */
-.cert-card {
-  background: white;
-  border-radius: 15px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-  border: 2px solid transparent;
-}
+  /* Card Styles */
+  .cert-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    border: 2px solid transparent;
+  }
 
-.cert-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-}
+  .cert-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
 
-.priority-high {
-  border-color: #dc3545;
-}
+  .priority-high {
+    border-color: #dc3545;
+  }
 
-.priority-high:hover {
-  border-color: #c82333;
-}
+  .priority-high:hover {
+    border-color: #c82333;
+  }
 
-.priority-medium {
-  border-color: #ffc107;
-}
+  .priority-medium {
+    border-color: #ffc107;
+  }
 
-.priority-medium:hover {
-  border-color: #e0a800;
-}
+  .priority-medium:hover {
+    border-color: #e0a800;
+  }
 
-.priority-low {
-  border-color: #17a2b8;
-}
+  .priority-low {
+    border-color: #17a2b8;
+  }
 
-.priority-low:hover {
-  border-color: #138496;
-}
+  .priority-low:hover {
+    border-color: #138496;
+  }
 
-.priority-badge {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  z-index: 10;
-}
+  .priority-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    z-index: 10;
+  }
 
-.cert-title {
-  margin-top: 40px;
-  color: #2c3e50;
-  font-weight: 700;
-  font-size: 1.4rem;
-}
+  .cert-title {
+    margin-top: 40px;
+    color: #2c3e50;
+    font-weight: 700;
+    font-size: 1.4rem;
+  }
 
-/* AI Score */
-.ai-score-container {
-  background: #f8f9fa;
-  padding: 15px;
-  border-radius: 10px;
-}
+  /* AI Score */
+  .ai-score-container {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+  }
 
-.score-value {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #0d6efd;
-}
+  .score-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0d6efd;
+  }
 
-/* Metrics Grid */
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.metric-item {
-  background: #f8f9fa;
-  padding: 12px;
-  border-radius: 8px;
-  text-align: center;
-}
-
-.metric-icon {
-  font-size: 1.5rem;
-  margin-bottom: 5px;
-}
-
-.metric-label {
-  font-size: 0.75rem;
-  color: #6c757d;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.metric-value {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #2c3e50;
-}
-
-/* Skills Tags */
-.skills-section {
-  border-top: 1px solid #e9ecef;
-  padding-top: 15px;
-}
-
-.skills-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.skill-tag {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-/* Stats */
-.stats h3 {
-  font-size: 3rem;
-  font-weight: 700;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
+  /* Metrics Grid */
   .metrics-grid {
-    grid-template-columns: 1fr;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 20px;
   }
-  
+
+  .metric-item {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+  }
+
+  .metric-icon {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+  }
+
+  .metric-label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .metric-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #2c3e50;
+  }
+
+  /* Skills Tags */
+  .skills-section {
+    border-top: 1px solid #e9ecef;
+    padding-top: 15px;
+  }
+
+  .skills-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .skill-tag {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  /* Stats */
   .stats h3 {
-    font-size: 2rem;
+    font-size: 3rem;
+    font-weight: 700;
   }
-}
 
-/* Animations */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+  /* Responsive */
+  @media (max-width: 768px) {
+    .metrics-grid {
+      grid-template-columns: 1fr;
+    }
 
-.cert-card {
-  animation: fadeInUp 0.6s ease-out;
-}
+    .stats h3 {
+      font-size: 2rem;
+    }
+  }
+
+  /* Animations */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .cert-card {
+    animation: fadeInUp 0.6s ease-out;
+  }
 </style>
 
 {% endblock %}

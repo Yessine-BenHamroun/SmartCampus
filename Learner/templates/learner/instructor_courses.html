@@ -1,11 +1,6 @@
-{% extends 'learner/base.html' %}
-{% load static %}
-
-{% block title %}My Courses - Instructor - SmartCampus{% endblock %}
-
-{% block body_class %}instructor-courses-page{% endblock %}
-
-{% block content %}
+{% extends 'learner/base.html' %} {% load static %} {% block title %}My Courses
+- Instructor - SmartCampus{% endblock %} {% block body_class
+%}instructor-courses-page{% endblock %} {% block content %}
 <!-- Page Header -->
 <section class="page-header section light-background">
   <div class="container">
@@ -42,9 +37,8 @@
           <i class="bi bi-check-circle"></i>
           <div>
             <h4>
-              {% for course in courses %}
-              {% if course.published or course.is_published %}1{% endif %}
-              {% endfor %}
+              {% for course in courses %} {% if course.published or
+              course.is_published %}1{% endif %} {% endfor %}
             </h4>
             <p>Published Courses</p>
           </div>
@@ -55,9 +49,8 @@
           <i class="bi bi-people"></i>
           <div>
             <h4>
-              {% for course in courses %}
-              {{ course.enrollment_count|default:0 }}{% if not forloop.last %}+{% endif %}
-              {% endfor %}
+              {% for course in courses %} {{ course.enrollment_count|default:0
+              }}{% if not forloop.last %}+{% endif %} {% endfor %}
             </h4>
             <p>Total Enrollments</p>
           </div>

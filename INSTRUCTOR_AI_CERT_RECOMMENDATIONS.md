@@ -1,6 +1,7 @@
 # Instructor AI Certification Recommendations System
 
 ## Overview
+
 This system provides **AI-powered recommendations** for instructors to help them decide which certifications to create next. Unlike the public student-facing trends page, this system is **personalized** based on:
 
 1. **Instructor's Expertise** - Analyzed from their existing courses
@@ -11,6 +12,7 @@ This system provides **AI-powered recommendations** for instructors to help them
 ## Key Features
 
 ### 1. Personalized Recommendations
+
 - **Expertise Match**: Calculates how well the certification aligns with instructor's current teaching areas
 - **Success Likelihood**: Percentage score (0-100%) showing probability of certification success
 - **Smart Filtering**: Excludes certifications the instructor has already created
@@ -20,14 +22,14 @@ This system provides **AI-powered recommendations** for instructors to help them
 
 Each recommendation includes:
 
-| Metric | Description | Range |
-|--------|-------------|-------|
-| **Success Likelihood** | Overall probability of success | 0-100% |
-| **Expertise Match** | How well it matches instructor's skills | 0-100% |
-| **Student Interest** | Predicted learner demand | 0-100% |
-| **Market Demand** | Industry requirement for skills | 0-100% |
-| **Growth Rate** | Expected market growth | 0-100% |
-| **AI Score** | Base recommendation score | 0-1.0 |
+| Metric                 | Description                             | Range  |
+| ---------------------- | --------------------------------------- | ------ |
+| **Success Likelihood** | Overall probability of success          | 0-100% |
+| **Expertise Match**    | How well it matches instructor's skills | 0-100% |
+| **Student Interest**   | Predicted learner demand                | 0-100% |
+| **Market Demand**      | Industry requirement for skills         | 0-100% |
+| **Growth Rate**        | Expected market growth                  | 0-100% |
+| **AI Score**           | Base recommendation score               | 0-1.0  |
 
 ### 3. Additional Information
 
@@ -40,11 +42,13 @@ Each recommendation includes:
 ### 4. Visual Design
 
 **Color-Coded Cards**:
+
 - 🟢 **Green Border** (≥85%): High success likelihood - Excellent match
 - 🟡 **Yellow Border** (70-84%): Medium success - Strong potential
 - ⚫ **Gray Border** (<70%): Lower success - Growth opportunity
 
 **Interactive Elements**:
+
 - Hover effects with lift animation
 - Progress bars for each metric
 - Gradient success badges
@@ -53,6 +57,7 @@ Each recommendation includes:
 ## Scoring Algorithm
 
 ### Success Likelihood Formula
+
 ```python
 success_likelihood = (
     ai_score * 0.25 +           # Market viability (25%)
@@ -63,6 +68,7 @@ success_likelihood = (
 ```
 
 ### Expertise Match Calculation
+
 ```python
 # 1. Extract keywords from instructor's course titles & descriptions
 # 2. Count matches with required skills
@@ -73,7 +79,9 @@ expertise_match = min(match_ratio * 0.8 + experience_bonus, 1.0)
 ```
 
 ### Student Interest Prediction
+
 Based on keyword analysis:
+
 - **High Interest** (80-99%): cybersecurity, cloud, data science, AI, ML, DevOps
 - **Medium Interest** (60-79%): python, web development, database, network
 - **Base Interest** (40-59%): Other certifications
@@ -81,14 +89,17 @@ Based on keyword analysis:
 ## API Endpoints
 
 ### Backend Endpoint
+
 **URL**: `GET /api/certifications/instructor/recommendations/`
 
 **Authentication**: Required (IsInstructor permission)
 
 **Parameters**:
+
 - `top_n` (optional): Number of recommendations (default: 10)
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -97,8 +108,8 @@ Based on keyword analysis:
       "certification": "Cybersecurity Analyst",
       "ai_score": 0.76,
       "demand_score": 0.89,
-      "salary_impact": 0.90,
-      "growth_rate": 0.40,
+      "salary_impact": 0.9,
+      "growth_rate": 0.4,
       "required_skills": ["cybersecurity", "security", "cloud security"],
       "priority": "RECOMMENDED",
       "expertise_match": 75.5,
@@ -119,6 +130,7 @@ Based on keyword analysis:
 ```
 
 ### Frontend URL
+
 **URL**: `/instructor/certification-recommendations/`
 
 **Access**: Instructor role required
@@ -130,11 +142,13 @@ Based on keyword analysis:
 ### Backend Components
 
 #### 1. View Class
+
 **File**: `backend/certifications/views.py`
 
 **Class**: `InstructorCertificationRecommendationsView(APIView)`
 
 **Key Methods**:
+
 - `get()`: Main handler, returns recommendations
 - `_calculate_expertise_match()`: Analyzes instructor's courses
 - `_calculate_student_interest()`: Predicts learner demand
@@ -145,32 +159,38 @@ Based on keyword analysis:
 - `_get_expertise_areas()`: Extracts top 3 expertise areas
 
 #### 2. URL Configuration
+
 **File**: `backend/certifications/urls.py`
 
-**Route**: 
+**Route**:
+
 ```python
-path('instructor/recommendations/', 
-     InstructorCertificationRecommendationsView.as_view(), 
+path('instructor/recommendations/',
+     InstructorCertificationRecommendationsView.as_view(),
      name='instructor-cert-recommendations')
 ```
 
 ### Frontend Components
 
 #### 1. View Function
+
 **File**: `Learner/views.py`
 
 **Function**: `instructor_certification_recommendations_view(request)`
 
 **Features**:
+
 - Requires authentication and instructor role
 - Fetches data from backend API with JWT token
 - Handles errors gracefully
 - Passes data to template
 
 #### 2. Template
+
 **File**: `Learner/templates/learner/instructor_cert_recommendations.html`
 
 **Sections**:
+
 1. **Hero Section**: Purple gradient background with title
 2. **Instructor Stats**: Shows courses, certifications, expertise areas
 3. **Info Alert**: Explains how AI works
@@ -179,6 +199,7 @@ path('instructor/recommendations/',
 6. **CTA Section**: Back to courses link
 
 **Features**:
+
 - Fully responsive (mobile-first)
 - Smooth animations on scroll
 - Progress bars for visual feedback
@@ -186,23 +207,29 @@ path('instructor/recommendations/',
 - Interactive hover effects
 
 #### 3. URL Configuration
+
 **File**: `Learner/urls.py`
 
 **Route**:
+
 ```python
-path('instructor/certification-recommendations/', 
-     views.instructor_certification_recommendations_view, 
+path('instructor/certification-recommendations/',
+     views.instructor_certification_recommendations_view,
      name='instructor_cert_recommendations')
 ```
 
 #### 4. Navigation
+
 **File**: `Learner/templates/learner/components/header.html`
 
 **Menu Item**: Added under "Teaching" dropdown
+
 ```html
-<li><a href="{% url 'instructor_cert_recommendations' %}">
+<li>
+  <a href="{% url 'instructor_cert_recommendations' %}">
     <i class="bi bi-stars"></i> AI Cert Recommendations
-</a></li>
+  </a>
+</li>
 ```
 
 ## Usage Instructions
@@ -228,6 +255,7 @@ path('instructor/certification-recommendations/',
 ### For Developers
 
 #### Testing the API
+
 ```bash
 # PowerShell (with instructor JWT token)
 $token = "YOUR_INSTRUCTOR_JWT_TOKEN"
@@ -237,7 +265,9 @@ Invoke-RestMethod -Uri "http://localhost:8001/api/certifications/instructor/reco
 ```
 
 #### Adding New Certifications
+
 Edit `backend/certifications/ai_recommendations/recommendation_engine.py`:
+
 ```python
 def map_skills_to_certifications(self):
     return {
@@ -248,7 +278,9 @@ def map_skills_to_certifications(self):
 ```
 
 #### Customizing Success Formula
+
 Edit `_calculate_success_likelihood()` method:
+
 ```python
 likelihood = (
     ai_score * 0.25 +         # Adjust weight
@@ -260,25 +292,26 @@ likelihood = (
 
 ## Comparison: Public vs Instructor Recommendations
 
-| Feature | Public Page (/certification-trends/) | Instructor Page (/instructor/certification-recommendations/) |
-|---------|-------------------------------------|---------------------------------------------------|
-| **Audience** | Students & public | Instructors only |
-| **Purpose** | Career guidance | Creation decisions |
-| **Authentication** | Not required | Required (instructor role) |
-| **Data Source** | Market trends only | Market + instructor expertise |
-| **Success Metric** | AI score only | Success likelihood % |
-| **Personalization** | None | Based on courses taught |
-| **Expertise Match** | Not shown | Displayed with % |
-| **Student Interest** | Not shown | Predicted and displayed |
-| **Filtering** | None | Excludes existing certs |
-| **Difficulty** | Not shown | Beginner/Intermediate/Advanced |
-| **Time Estimate** | Not shown | 2-8 weeks estimate |
-| **Recommendation Reason** | Not shown | Detailed explanation |
-| **Action** | Browse courses | Create certification |
+| Feature                   | Public Page (/certification-trends/) | Instructor Page (/instructor/certification-recommendations/) |
+| ------------------------- | ------------------------------------ | ------------------------------------------------------------ |
+| **Audience**              | Students & public                    | Instructors only                                             |
+| **Purpose**               | Career guidance                      | Creation decisions                                           |
+| **Authentication**        | Not required                         | Required (instructor role)                                   |
+| **Data Source**           | Market trends only                   | Market + instructor expertise                                |
+| **Success Metric**        | AI score only                        | Success likelihood %                                         |
+| **Personalization**       | None                                 | Based on courses taught                                      |
+| **Expertise Match**       | Not shown                            | Displayed with %                                             |
+| **Student Interest**      | Not shown                            | Predicted and displayed                                      |
+| **Filtering**             | None                                 | Excludes existing certs                                      |
+| **Difficulty**            | Not shown                            | Beginner/Intermediate/Advanced                               |
+| **Time Estimate**         | Not shown                            | 2-8 weeks estimate                                           |
+| **Recommendation Reason** | Not shown                            | Detailed explanation                                         |
+| **Action**                | Browse courses                       | Create certification                                         |
 
 ## Future Enhancements
 
 ### Phase 2 (Recommended)
+
 1. **Real Student Interest Data**: Analyze actual search queries and course enrollments
 2. **Certification Templates**: Pre-built structures for quick creation
 3. **Competitor Analysis**: Show similar certifications on the platform
@@ -286,6 +319,7 @@ likelihood = (
 5. **Skill Gap Analysis**: Show what skills instructor needs to learn
 
 ### Phase 3 (Advanced)
+
 1. **A/B Testing**: Test different recommendation formulas
 2. **Machine Learning**: Train on actual certification success data
 3. **Collaborative Filtering**: Recommend based on similar instructors
@@ -295,15 +329,19 @@ likelihood = (
 ## Troubleshooting
 
 ### Issue: "Access denied"
+
 **Solution**: Ensure you're logged in as instructor, not student
 
 ### Issue: Empty recommendations
+
 **Solution**: Create some courses first to establish expertise
 
 ### Issue: Low expertise match
+
 **Solution**: Course keywords don't match certification skills - this is normal for new areas
 
 ### Issue: All certifications filtered out
+
 **Solution**: You've already created all recommended certifications - expand to new areas!
 
 ## Performance Considerations
@@ -323,6 +361,7 @@ likelihood = (
 ## Success Metrics
 
 **Track these KPIs**:
+
 1. Number of instructors using recommendations
 2. Certifications created from recommendations
 3. Success rate of recommended vs non-recommended certifications
@@ -334,6 +373,7 @@ likelihood = (
 The Instructor AI Certification Recommendations system provides **personalized, data-driven insights** to help instructors make informed decisions about which certifications to create. With a comprehensive scoring system, beautiful UI, and actionable metrics, instructors can confidently expand their offerings in high-demand areas that match their expertise.
 
 **Key Benefits**:
+
 - 🎯 Personalized to instructor's expertise
 - 📊 Data-driven with multiple metrics
 - 💡 Clear success likelihood percentages

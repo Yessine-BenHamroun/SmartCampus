@@ -1,9 +1,6 @@
-{% extends 'learner/base.html' %}
-{% load static %}
-
-{% block title %}Manage Certification Steps - {{ certification.title }}{% endblock %}
-
-{% block extra_css %}
+{% extends 'learner/base.html' %} {% load static %} {% block title %}Manage
+Certification Steps - {{ certification.title }}{% endblock %} {% block extra_css
+%}
 <style>
   .steps-container {
     max-width: 1200px;
@@ -128,9 +125,7 @@
     color: #6c757d;
   }
 </style>
-{% endblock %}
-
-{% block content %}
+{% endblock %} {% block content %}
 <div class="steps-container">
   <!-- Certification Header -->
   <div class="cert-header">
@@ -390,10 +385,12 @@
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <h5 class="mb-2">
-            <i class="bi bi-check-circle-fill text-success"></i> Final Exam Created
+            <i class="bi bi-check-circle-fill text-success"></i> Final Exam
+            Created
           </h5>
           <p class="text-muted mb-0">
-            Students can now take the final exam after completing all steps above
+            Students can now take the final exam after completing all steps
+            above
           </p>
         </div>
         <div>
@@ -409,11 +406,15 @@
     {% else %}
     <div class="exam-card">
       <div class="text-center py-3">
-        <i class="bi bi-clipboard-x" style="font-size: 48px; color: #6c757d;"></i>
+        <i
+          class="bi bi-clipboard-x"
+          style="font-size: 48px; color: #6c757d"
+        ></i>
         <h5 class="mt-3 mb-2">No Final Exam Created</h5>
         <p class="text-muted mb-4">
-          Create a final exam quiz with multiple choice and true/false questions.
-          Students must pass this exam to earn their certification badge.
+          Create a final exam quiz with multiple choice and true/false
+          questions. Students must pass this exam to earn their certification
+          badge.
         </p>
         <a
           href="{% url 'create_certification_exam' certification.id %}"
@@ -503,13 +504,122 @@
 
   // Edit step
   function editStep(stepId) {
-    // TODO: Implement edit functionality
-    alert("Edit step " + stepId);
+    // Find the step data from the page
+    const steps = {{ steps_json|safe }};
+    const step = steps.find(s => s.id === stepId);
+
+    if (!step) {
+      alert('Step not found');
+      return;
+    }
+
+    // Create edit modal
+    const modalHTML = `
+      <div class="modal fade" id="editStepModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="bi bi-pencil"></i> Edit Step: ${step.title}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/instructor/certification/step/${stepId}/update/" enctype="multipart/form-data">
+              <div class="modal-body">
+                <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('[name=csrfmiddlewaretoken]').value}">
+                <input type="hidden" name="certification_id" value="{{ certification.id }}">
+                <input type="hidden" name="step_type" value="${step.step_type}">
+                <input type="hidden" name="existing_content_url" value="${step.content.video_url || step.content.document_url || step.content.quiz_url || step.content.assignment_url || ''}">
+
+                <div class="mb-3">
+                  <label class="form-label">Step Title *</label>
+                  <input type="text" name="title" class="form-control" value="${step.title}" required>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Description *</label>
+                  <textarea name="description" class="form-control" rows="3" required>${step.description || ''}</textarea>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Step Type</label>
+                  <input type="text" class="form-control" value="${step.step_type}" disabled>
+                  <small class="text-muted">Step type cannot be changed after creation</small>
+                </div>
+
+                ${step.step_type === 'video' ? `
+                  <div class="mb-3">
+                    <label class="form-label">Upload New Video (Optional)</label>
+                    <input type="file" name="video_file" class="form-control" accept="video/*">
+                    <small class="text-muted">Leave empty to keep current video</small>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Or Update Video URL</label>
+                    <input type="url" name="content_url" class="form-control" value="${step.content.video_url || ''}" placeholder="https://...">
+                  </div>
+                ` : ''}
+
+                ${step.step_type === 'reading' ? `
+                  <div class="mb-3">
+                    <label class="form-label">Upload New PDF (Optional)</label>
+                    <input type="file" name="pdf_file" class="form-control" accept=".pdf">
+                    <small class="text-muted">Leave empty to keep current PDF</small>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Or Update Document URL</label>
+                    <input type="url" name="content_url" class="form-control" value="${step.content.document_url || ''}" placeholder="https://...">
+                  </div>
+                ` : ''}
+
+                ${step.step_type === 'quiz' || step.step_type === 'assignment' ? `
+                  <div class="mb-3">
+                    <label class="form-label">Content URL *</label>
+                    <input type="url" name="content_url" class="form-control" value="${step.content.quiz_url || step.content.assignment_url || ''}" required>
+                  </div>
+                ` : ''}
+
+                <div class="mb-3">
+                  <label class="form-label">Estimated Duration (minutes)</label>
+                  <input type="number" name="estimated_duration" class="form-control" value="${step.duration_minutes || 0}" min="0">
+                </div>
+
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="is_mandatory" id="editIsMandatory" ${step.is_mandatory ? 'checked' : ''}>
+                  <label class="form-check-label" for="editIsMandatory">
+                    This step is mandatory
+                  </label>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Remove existing modal if any
+    const existingModal = document.getElementById('editStepModal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('editStepModal'));
+    modal.show();
+
+    // Remove modal from DOM after it's hidden
+    document.getElementById('editStepModal').addEventListener('hidden.bs.modal', function () {
+      this.remove();
+    });
   }
 
   // Delete step
   function deleteStep(stepId, stepTitle) {
-    if (confirm('Are you sure you want to delete "' + stepTitle + '"?')) {
+    if (confirm('Are you sure you want to delete "' + stepTitle + '"?\n\nThis action cannot be undone.')) {
       // Create form and submit
       const form = document.createElement("form");
       form.method = "POST";

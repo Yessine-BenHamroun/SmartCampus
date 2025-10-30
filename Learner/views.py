@@ -16,6 +16,7 @@ from .api_auth import (
 )
 from .forms import RegisterForm, LoginForm
 import time
+import json
 
 
 # Page Views (no auth required)
@@ -1671,6 +1672,7 @@ def manage_certification_steps_view(request, certification_id):
     context = {
         'certification': certification,
         'steps': steps,
+        'steps_json': json.dumps(steps),  # Add JSON version for JavaScript
         'final_exam': final_exam,
         'has_exam': final_exam is not None,
         'page_title': f'Manage Steps - {certification.get("title") if certification else "Certification"}'
@@ -1866,14 +1868,15 @@ def delete_certification_step_view(request, step_id):
         
         # Delete the step
         response = requests.delete(
-            f'http://localhost:8001/api/certifications/step/{step_id}/',
+            f'http://localhost:8001/api/certifications/steps/{step_id}/delete/',
             headers={'Authorization': f'Bearer {access_token}'}
         )
         
         if response.status_code == 200:
             messages.success(request, 'Step deleted successfully!')
         else:
-            messages.error(request, 'Failed to delete step')
+            error_msg = response.json().get('error', 'Failed to delete step')
+            messages.error(request, error_msg)
     except Exception as e:
         messages.error(request, f'Error: {str(e)}')
     
@@ -1881,6 +1884,142 @@ def delete_certification_step_view(request, step_id):
         return redirect('manage_certification_steps', certification_id=certification_id)
     else:
         return redirect('instructor_courses')
+
+
+@api_login_required
+def update_certification_step_view(request, step_id):
+    """Update a certification step (Instructor only)"""
+    import requests
+    
+    user = get_current_user(request)
+    user_role = user.get('role', 'student')
+    
+    if user_role not in ['instructor', 'admin']:
+        messages.error(request, 'Access denied.')
+        return redirect('index')
+    
+    access_token = get_access_token(request)
+    certification_id = request.POST.get('certification_id')
+    
+    if request.method != 'POST':
+        return redirect('manage_certification_steps', certification_id=certification_id)
+    
+    try:
+        print(f"🔵 Starting to update certification step {step_id}...")
+        print(f"📋 Form data: {dict(request.POST)}")
+        print(f"📁 Files: {dict(request.FILES)}")
+        
+        step_type = request.POST.get('step_type')
+        content_url = None
+        
+        # Handle file uploads for video and PDF
+        if step_type == 'video':
+            video_file = request.FILES.get('video_file')
+            video_url = request.POST.get('content_url', '').strip()
+            
+            if video_file:
+                # Save video file
+                import os
+                from django.core.files.storage import default_storage
+                import time
+                
+                timestamp = int(time.time())
+                file_extension = video_file.name.split('.')[-1]
+                filename = f"cert_video_{certification_id}_{timestamp}.{file_extension}"
+                file_path = os.path.join('certifications', 'videos', filename)
+                saved_path = default_storage.save(file_path, video_file)
+                content_url = f"/media/{saved_path}"
+                print(f"💾 Video saved to: {content_url}")
+            elif video_url:
+                content_url = video_url
+            else:
+                # Keep existing video URL
+                content_url = request.POST.get('existing_content_url')
+                
+        elif step_type == 'reading':
+            pdf_file = request.FILES.get('pdf_file')
+            pdf_url = request.POST.get('content_url', '').strip()
+            
+            if pdf_file:
+                # Save PDF file
+                import os
+                from django.core.files.storage import default_storage
+                import time
+                
+                timestamp = int(time.time())
+                file_extension = pdf_file.name.split('.')[-1]
+                filename = f"cert_pdf_{certification_id}_{timestamp}.{file_extension}"
+                file_path = os.path.join('certifications', 'pdfs', filename)
+                saved_path = default_storage.save(file_path, pdf_file)
+                content_url = f"/media/{saved_path}"
+                print(f"💾 PDF saved to: {content_url}")
+            elif pdf_url:
+                content_url = pdf_url
+            else:
+                # Keep existing PDF URL
+                content_url = request.POST.get('existing_content_url')
+        else:
+            # For quiz/assignment
+            content_url = request.POST.get('content_url', '').strip()
+            if not content_url:
+                content_url = request.POST.get('existing_content_url')
+        
+        # Get estimated_duration
+        estimated_duration = request.POST.get('estimated_duration', '').strip()
+        if estimated_duration:
+            estimated_duration = int(estimated_duration)
+        else:
+            estimated_duration = 0
+        
+        # Build content object based on step type
+        content = {}
+        if step_type == 'video':
+            content = {'video_url': content_url}
+        elif step_type == 'reading':
+            content = {'document_url': content_url}
+        elif step_type == 'quiz':
+            content = {'quiz_url': content_url}
+        else:  # assignment
+            content = {'assignment_url': content_url}
+        
+        # Build the request payload
+        payload = {
+            'title': request.POST.get('title'),
+            'description': request.POST.get('description', ''),
+            'step_type': step_type,
+            'content': content,
+            'duration_minutes': estimated_duration,
+            'is_mandatory': request.POST.get('is_mandatory') == 'on'
+        }
+        
+        print(f"📤 Sending update request with payload: {payload}")
+        
+        # Send update request to backend
+        response = requests.put(
+            f'http://localhost:8001/api/certifications/steps/{step_id}/update/',
+            json=payload,
+            headers={
+                'Authorization': f'Bearer {access_token}',
+                'Content-Type': 'application/json'
+            }
+        )
+        
+        print(f"📥 Backend response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            messages.success(request, 'Step updated successfully!')
+        else:
+            error_data = response.json() if response.headers.get('content-type') == 'application/json' else {}
+            error_msg = error_data.get('error', 'Failed to update step')
+            messages.error(request, error_msg)
+            print(f"❌ Backend error: {error_data}")
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        messages.error(request, f'Error: {str(e)}')
+    
+    return redirect('manage_certification_steps', certification_id=certification_id)
 
 
 @api_login_required

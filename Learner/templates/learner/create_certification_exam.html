@@ -1,11 +1,6 @@
-{% extends 'learner/base.html' %}
-{% load static %}
-
-{% block title %}Create Final Exam - {{ certification.title }} - SmartCampus{% endblock %}
-
-{% block body_class %}create-certification-exam-page{% endblock %}
-
-{% block content %}
+{% extends 'learner/base.html' %} {% load static %} {% block title %}Create
+Final Exam - {{ certification.title }} - SmartCampus{% endblock %} {% block
+body_class %}create-certification-exam-page{% endblock %} {% block content %}
 <main id="main">
   <!-- Breadcrumbs -->
   <div class="breadcrumbs">
@@ -15,7 +10,11 @@
         <ol>
           <li><a href="{% url 'index' %}">Home</a></li>
           <li><a href="{% url 'instructor_courses' %}">My Courses</a></li>
-          <li><a href="{% url 'manage_certification_steps' certification_id %}">{{ certification.title }}</a></li>
+          <li>
+            <a href="{% url 'manage_certification_steps' certification_id %}"
+              >{{ certification.title }}</a
+            >
+          </li>
           <li>Create Final Exam</li>
         </ol>
       </div>
@@ -29,61 +28,121 @@
         <div class="col-lg-10">
           <div class="card shadow">
             <div class="card-header bg-warning text-dark">
-              <h4 class="mb-0"><i class="bi bi-clipboard-check"></i> Create Final Exam for {{ certification.title }}</h4>
+              <h4 class="mb-0">
+                <i class="bi bi-clipboard-check"></i> Create Final Exam for {{
+                certification.title }}
+              </h4>
             </div>
             <div class="card-body">
               <form method="POST" id="examForm">
                 {% csrf_token %}
-                
+
                 <!-- Exam Details -->
                 <div class="exam-details mb-4">
                   <h5 class="mb-3">Exam Details</h5>
-                  
+
                   <div class="row">
                     <div class="col-md-12 mb-3">
-                      <label for="exam_title" class="form-label">Exam Title <span class="text-danger">*</span></label>
-                      <input type="text" class="form-control" id="exam_title" name="exam_title" 
-                             value="Final Exam - {{ certification.title }}" required>
+                      <label for="exam_title" class="form-label"
+                        >Exam Title <span class="text-danger">*</span></label
+                      >
+                      <input
+                        type="text"
+                        class="form-control"
+                        id="exam_title"
+                        name="exam_title"
+                        value="Final Exam - {{ certification.title }}"
+                        required
+                      />
                     </div>
-                    
+
                     <div class="col-md-12 mb-3">
-                      <label for="exam_description" class="form-label">Description</label>
-                      <textarea class="form-control" id="exam_description" name="exam_description" rows="3"
-                                placeholder="Enter exam instructions...">Complete this final exam to earn your certification badge.</textarea>
+                      <label for="exam_description" class="form-label"
+                        >Description</label
+                      >
+                      <textarea
+                        class="form-control"
+                        id="exam_description"
+                        name="exam_description"
+                        rows="3"
+                        placeholder="Enter exam instructions..."
+                      >
+Complete this final exam to earn your certification badge.</textarea
+                      >
                     </div>
-                    
+
                     <div class="col-md-3 mb-3">
-                      <label for="passing_score" class="form-label">Passing Score (%)</label>
-                      <input type="number" class="form-control" id="passing_score" name="passing_score" 
-                             value="{{ certification.passing_score|default:70 }}" min="0" max="100" required>
+                      <label for="passing_score" class="form-label"
+                        >Passing Score (%)</label
+                      >
+                      <input
+                        type="number"
+                        class="form-control"
+                        id="passing_score"
+                        name="passing_score"
+                        value="{{ certification.passing_score|default:70 }}"
+                        min="0"
+                        max="100"
+                        required
+                      />
                     </div>
-                    
+
                     <div class="col-md-3 mb-3">
-                      <label for="time_limit" class="form-label">Time Limit (min)</label>
-                      <input type="number" class="form-control" id="time_limit" name="time_limit" 
-                             value="60" min="0">
+                      <label for="time_limit" class="form-label"
+                        >Time Limit (min)</label
+                      >
+                      <input
+                        type="number"
+                        class="form-control"
+                        id="time_limit"
+                        name="time_limit"
+                        value="60"
+                        min="0"
+                      />
                       <small class="text-muted">0 = no limit</small>
                     </div>
-                    
+
                     <div class="col-md-3 mb-3">
-                      <label for="max_attempts" class="form-label">Max Attempts</label>
-                      <input type="number" class="form-control" id="max_attempts" name="max_attempts" 
-                             value="3" min="1" max="10" required>
+                      <label for="max_attempts" class="form-label"
+                        >Max Attempts</label
+                      >
+                      <input
+                        type="number"
+                        class="form-control"
+                        id="max_attempts"
+                        name="max_attempts"
+                        value="3"
+                        min="1"
+                        max="10"
+                        required
+                      />
                     </div>
-                    
+
                     <div class="col-md-3 mb-3">
                       <label class="form-label d-block">Options</label>
                       <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="shuffle_questions" 
-                               name="shuffle_questions" checked>
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          id="shuffle_questions"
+                          name="shuffle_questions"
+                          checked
+                        />
                         <label class="form-check-label" for="shuffle_questions">
                           Shuffle Questions
                         </label>
                       </div>
                       <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="show_correct_answers" 
-                               name="show_correct_answers">
-                        <label class="form-check-label" for="show_correct_answers">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          id="show_correct_answers"
+                          name="show_correct_answers"
+                        />
+                        <label
+                          class="form-check-label"
+                          for="show_correct_answers"
+                        >
                           Show Correct Answers
                         </label>
                       </div>
@@ -91,27 +150,41 @@
                   </div>
                 </div>
 
-                <hr>
+                <hr />
 
                 <!-- Questions Section -->
                 <div class="questions-section mb-4">
-                  <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div
+                    class="d-flex justify-content-between align-items-center mb-3"
+                  >
                     <h5 class="mb-0">Exam Questions</h5>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="addQuestion()">
+                    <button
+                      type="button"
+                      class="btn btn-primary btn-sm"
+                      onclick="addQuestion()"
+                    >
                       <i class="bi bi-plus-circle"></i> Add Question
                     </button>
                   </div>
-                  
+
                   <div id="questionsContainer">
                     <!-- Questions will be added here dynamically -->
                   </div>
-                  
-                  <input type="hidden" id="question_count" name="question_count" value="0">
+
+                  <input
+                    type="hidden"
+                    id="question_count"
+                    name="question_count"
+                    value="0"
+                  />
                 </div>
 
                 <!-- Submit Buttons -->
                 <div class="d-flex justify-content-between">
-                  <a href="{% url 'manage_certification_steps' certification_id %}" class="btn btn-secondary">
+                  <a
+                    href="{% url 'manage_certification_steps' certification_id %}"
+                    class="btn btn-secondary"
+                  >
                     <i class="bi bi-x-circle"></i> Cancel
                   </a>
                   <button type="submit" class="btn btn-warning">
@@ -128,13 +201,13 @@
 </main>
 
 <script>
-let questionCount = 0;
+  let questionCount = 0;
 
-function addQuestion() {
-  const container = document.getElementById('questionsContainer');
-  const questionIndex = questionCount;
-  
-  const questionHtml = `
+  function addQuestion() {
+    const container = document.getElementById("questionsContainer");
+    const questionIndex = questionCount;
+
+    const questionHtml = `
     <div class="card mb-3 question-card" id="question_${questionIndex}">
       <div class="card-header bg-light d-flex justify-content-between align-items-center">
         <strong>Question ${questionIndex + 1}</strong>
@@ -168,47 +241,53 @@ function addQuestion() {
           <div class="col-md-12">
             <label class="form-label">Answer Options *</label>
             <div id="options_${questionIndex}">
-              ${generateOptions(questionIndex, 'multiple_choice')}
+              ${generateOptions(questionIndex, "multiple_choice")}
             </div>
           </div>
         </div>
       </div>
     </div>
   `;
-  
-  container.insertAdjacentHTML('beforeend', questionHtml);
-  questionCount++;
-  document.getElementById('question_count').value = questionCount;
-}
 
-function removeQuestion(index) {
-  const questionCard = document.getElementById(`question_${index}`);
-  if (questionCard) {
-    questionCard.remove();
+    container.insertAdjacentHTML("beforeend", questionHtml);
+    questionCount++;
+    document.getElementById("question_count").value = questionCount;
   }
-}
 
-function updateQuestionType(index, type) {
-  const optionsContainer = document.getElementById(`options_${index}`);
-  optionsContainer.innerHTML = generateOptions(index, type);
-}
+  function removeQuestion(index) {
+    const questionCard = document.getElementById(`question_${index}`);
+    if (questionCard) {
+      questionCard.remove();
+    }
+  }
 
-function generateOptions(questionIndex, type) {
-  if (type === 'multiple_choice') {
-    return `
-      ${[0, 1, 2, 3].map(i => `
+  function updateQuestionType(index, type) {
+    const optionsContainer = document.getElementById(`options_${index}`);
+    optionsContainer.innerHTML = generateOptions(index, type);
+  }
+
+  function generateOptions(questionIndex, type) {
+    if (type === "multiple_choice") {
+      return `
+      ${[0, 1, 2, 3]
+        .map(
+          (i) => `
         <div class="input-group mb-2">
           <div class="input-group-text">
-            <input type="radio" name="question_${questionIndex}_correct" value="${i}" ${i === 0 ? 'checked' : ''} required>
+            <input type="radio" name="question_${questionIndex}_correct" value="${i}" ${
+            i === 0 ? "checked" : ""
+          } required>
           </div>
           <input type="text" class="form-control" name="question_${questionIndex}_option_${i}" 
                  placeholder="Option ${String.fromCharCode(65 + i)}" required>
         </div>
-      `).join('')}
+      `
+        )
+        .join("")}
       <small class="text-muted">Select the correct answer</small>
     `;
-  } else if (type === 'true_false') {
-    return `
+    } else if (type === "true_false") {
+      return `
       <div class="form-check">
         <input class="form-check-input" type="radio" name="question_${questionIndex}_correct" 
                value="true" id="q${questionIndex}_true" checked>
@@ -220,24 +299,24 @@ function generateOptions(questionIndex, type) {
         <label class="form-check-label" for="q${questionIndex}_false">False</label>
       </div>
     `;
+    }
   }
-}
 
-// Add first question on load
-document.addEventListener('DOMContentLoaded', function() {
-  addQuestion();
-  addQuestion();
-  addQuestion();
-});
+  // Add first question on load
+  document.addEventListener("DOMContentLoaded", function () {
+    addQuestion();
+    addQuestion();
+    addQuestion();
+  });
 </script>
 
 <style>
-.question-card {
-  border-left: 4px solid #ffc107;
-}
+  .question-card {
+    border-left: 4px solid #ffc107;
+  }
 
-.question-card:hover {
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
+  .question-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
 </style>
 {% endblock %}
