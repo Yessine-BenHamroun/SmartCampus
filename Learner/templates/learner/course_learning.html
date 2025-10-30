@@ -1,0 +1,831 @@
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}{{ course.title }} - Learning - SmartCampus{% endblock %}
+
+{% block body_class %}course-learning-page{% endblock %}
+
+{% block content %}
+<div class="learning-container">
+  <!-- Sidebar with curriculum -->
+  <div class="learning-sidebar" id="learningSidebar">
+    <div class="sidebar-header">
+      <h3>{{ course.title }}</h3>
+      <button class="btn-close-sidebar" onclick="toggleSidebar()">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    
+    <div class="progress-overview">
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="overallProgress" style="width: {{ progress.completion_percentage|default:0 }}%"></div>
+      </div>
+      <span class="progress-text">{{ progress.completion_percentage|default:0 }}% Complete</span>
+    </div>
+    
+    <div class="curriculum-nav">
+      {% for module in modules %}
+      <div class="module-section">
+        <div class="module-title">
+          <i class="bi bi-folder2"></i>
+          {{ module.title }}
+        </div>
+        <div class="lessons-list">
+          {% for lesson in module.lessons %}
+          <div class="lesson-nav-item {% if lesson.id == current_lesson.id %}active{% endif %} {% if lesson.id in progress.lessons_completed %}completed{% endif %}"
+               data-lesson-id="{{ lesson.id }}"
+               data-lesson-type="{{ lesson.content_type }}"
+               onclick="loadLesson('{{ lesson.id }}', '{{ lesson.title }}', '{{ lesson.content_type }}')">
+            <div class="lesson-nav-info">
+              {% if lesson.id in progress.lessons_completed %}
+                <i class="bi bi-check-circle-fill text-success"></i>
+              {% else %}
+                <i class="bi bi-circle"></i>
+              {% endif %}
+              <span>{{ forloop.counter }}. {{ lesson.title }}</span>
+            </div>
+            <div class="lesson-nav-meta">
+              <span class="duration">{{ lesson.duration_minutes|default:0 }}m</span>
+              {% if lesson.content_type == 'video' %}
+                <i class="bi bi-play-circle"></i>
+              {% elif lesson.content_type == 'quiz' %}
+                <i class="bi bi-question-circle"></i>
+              {% else %}
+                <i class="bi bi-file-text"></i>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  
+  <!-- Main content area -->
+  <div class="learning-main">
+    <!-- Top bar -->
+    <div class="learning-topbar">
+      <button class="btn-toggle-sidebar" onclick="toggleSidebar()">
+        <i class="bi bi-list"></i>
+      </button>
+      <div class="lesson-title-bar">
+        <h4 id="currentLessonTitle">{{ current_lesson.title }}</h4>
+      </div>
+      <div class="topbar-actions">
+        <span class="time-spent" id="timeSpent">0:00</span>
+        <a href="{% url 'course_detail' course_id %}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-x-lg"></i> Exit
+        </a>
+      </div>
+    </div>
+    
+    <!-- Lesson content -->
+    <div class="lesson-content" id="lessonContent">
+      {% if current_lesson %}
+        <div class="lesson-player">
+          <div id="lessonPlayer">
+            <!-- Content will be loaded here -->
+            <div class="loading-state">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <p>Loading lesson...</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="lesson-actions">
+          <button class="btn btn-success btn-lg" id="markCompleteBtn" onclick="markLessonComplete()">
+            <i class="bi bi-check-circle"></i> Mark as Complete
+          </button>
+          <button class="btn btn-primary btn-lg" id="nextLessonBtn" onclick="goToNextLesson()" style="display: none;">
+            Next Lesson <i class="bi bi-arrow-right"></i>
+          </button>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <i class="bi bi-book display-1 text-muted"></i>
+          <h3>No lessons available yet</h3>
+          <p>The instructor is preparing the course content.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<style>
+.learning-container {
+  display: flex;
+  height: calc(100vh - 80px);
+  margin-top: 80px;
+}
+
+.learning-sidebar {
+  width: 350px;
+  background: white;
+  border-right: 1px solid #dee2e6;
+  overflow-y: auto;
+  flex-shrink: 0;
+  transition: transform 0.3s;
+}
+
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid #dee2e6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.btn-close-sidebar {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 5px;
+  display: none;
+}
+
+.progress-overview {
+  padding: 20px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.progress-bar-container {
+  background: #e9ecef;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-bar {
+  background: var(--accent-color);
+  height: 100%;
+  transition: width 0.3s;
+}
+
+.progress-text {
+  font-size: 0.9rem;
+  color: var(--default-color);
+}
+
+.curriculum-nav {
+  padding: 10px;
+}
+
+.module-section {
+  margin-bottom: 20px;
+}
+
+.module-title {
+  font-weight: 600;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lessons-list {
+  padding-left: 10px;
+}
+
+.lesson-nav-item {
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 5px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lesson-nav-item:hover {
+  background: #f8f9fa;
+}
+
+.lesson-nav-item.active {
+  background: var(--accent-color);
+  color: white;
+}
+
+.lesson-nav-item.active i {
+  color: white !important;
+}
+
+.lesson-nav-item.completed {
+  opacity: 0.8;
+}
+
+.lesson-nav-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.lesson-nav-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.learning-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.learning-topbar {
+  background: white;
+  border-bottom: 1px solid #dee2e6;
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.btn-toggle-sidebar {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 5px 10px;
+}
+
+.lesson-title-bar {
+  flex: 1;
+}
+
+.lesson-title-bar h4 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.time-spent {
+  font-weight: 600;
+  color: var(--accent-color);
+  font-size: 1.1rem;
+}
+
+.lesson-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 30px;
+  background: #f8f9fa;
+}
+
+.lesson-player {
+  background: white;
+  border-radius: 10px;
+  padding: 40px;
+  margin-bottom: 20px;
+  min-height: 400px;
+}
+
+#lessonPlayer {
+  min-height: 300px;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+}
+
+.lesson-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+}
+
+/* Quiz Styles */
+.quiz-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.quiz-info {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.quiz-question {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  border-left: 4px solid var(--accent-color);
+}
+
+.quiz-question h5 {
+  margin-bottom: 15px;
+  color: var(--heading-color);
+}
+
+.quiz-options {
+  padding-left: 10px;
+}
+
+.quiz-options .form-check {
+  padding: 12px;
+  margin-bottom: 10px;
+  background: white;
+  border-radius: 6px;
+  transition: all 0.3s;
+}
+
+.quiz-options .form-check:hover {
+  background: #e9ecef;
+}
+
+.quiz-results {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 40px;
+  background: white;
+  border-radius: 10px;
+}
+
+.quiz-stats {
+  background: #f8f9fa;
+  padding: 30px;
+  border-radius: 8px;
+  margin-top: 30px;
+}
+
+.quiz-stats h4 {
+  font-size: 2rem;
+  color: var(--accent-color);
+  margin: 0;
+}
+
+@media (max-width: 991px) {
+  .learning-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    z-index: 1000;
+    transform: translateX(-100%);
+  }
+  
+  .learning-sidebar.active {
+    transform: translateX(0);
+  }
+  
+  .btn-close-sidebar {
+    display: block;
+  }
+}
+</style>
+
+<script>
+const courseId = '{{ course_id }}';
+const accessToken = '{{ request.session.access_token }}';
+let currentLessonId = '{{ current_lesson.id }}';
+let lessonStartTime = Date.now();
+let timerInterval = null;
+let elapsedSeconds = 0;
+
+// Start timer
+function startTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  
+  timerInterval = setInterval(() => {
+    elapsedSeconds++;
+    const minutes = Math.floor(elapsedSeconds / 60);
+    const seconds = elapsedSeconds % 60;
+    document.getElementById('timeSpent').textContent = 
+      `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }, 1000);
+}
+
+// Stop timer
+function stopTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}
+
+// Load lesson content
+async function loadLesson(lessonId, lessonTitle, contentType) {
+  // Stop current timer
+  stopTimer();
+  
+  // Reset timer
+  elapsedSeconds = 0;
+  lessonStartTime = Date.now();
+  
+  currentLessonId = lessonId;
+  document.getElementById('currentLessonTitle').textContent = lessonTitle;
+  
+  // Update active state in sidebar
+  document.querySelectorAll('.lesson-nav-item').forEach(item => {
+    item.classList.remove('active');
+    if (item.dataset.lessonId === lessonId) {
+      item.classList.add('active');
+    }
+  });
+  
+  // Show loading
+  document.getElementById('lessonPlayer').innerHTML = `
+    <div class="loading-state">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p>Loading lesson...</p>
+    </div>
+  `;
+  
+  try {
+    // Fetch lesson details
+    const response = await fetch(`http://localhost:8001/api/courses/lesson/${lessonId}/`, {
+      headers: {
+        'Authorization': 'Bearer ' + accessToken
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      const lesson = data.lesson;
+      
+      // Display lesson content based on type
+      let contentHTML = '';
+      
+      if (lesson.content_type === 'quiz') {
+        // Load quiz for this lesson
+        await loadQuiz(lessonId);
+        return; // Quiz loading handles its own display
+      } else if (lesson.content_type === 'video' && lesson.content && lesson.content.video_url) {
+        contentHTML = `
+          <div class="video-player">
+            <iframe width="100%" height="500" src="${lesson.content.video_url}" 
+                    frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen></iframe>
+          </div>
+        `;
+      } else if (lesson.content && lesson.content.text_content) {
+        contentHTML = `
+          <div class="text-content">
+            <h2>${lesson.title}</h2>
+            <div class="content-body">
+              ${lesson.content.text_content}
+            </div>
+          </div>
+        `;
+      } else {
+        contentHTML = `
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Lesson content will be available soon.
+          </div>
+        `;
+      }
+      
+      document.getElementById('lessonPlayer').innerHTML = contentHTML;
+      
+      // Start timer
+      startTimer();
+      
+    } else {
+      throw new Error('Failed to load lesson');
+    }
+  } catch (error) {
+    console.error('Error loading lesson:', error);
+    document.getElementById('lessonPlayer').innerHTML = `
+      <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle"></i> Failed to load lesson. Please try again.
+      </div>
+    `;
+  }
+}
+
+// Load quiz for a lesson
+async function loadQuiz(lessonId) {
+  try {
+    const response = await fetch(`http://localhost:8001/api/courses/lesson/${lessonId}/quiz/`, {
+      headers: {
+        'Authorization': 'Bearer ' + accessToken
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      const quiz = data.quiz;
+      
+      if (!quiz) {
+        document.getElementById('lessonPlayer').innerHTML = `
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No quiz available for this lesson yet.
+          </div>
+        `;
+        startTimer();
+        return;
+      }
+      
+      // Display quiz
+      let quizHTML = `
+        <div class="quiz-container">
+          <h2><i class="bi bi-question-circle"></i> ${quiz.title}</h2>
+          <p class="text-muted">${quiz.description || ''}</p>
+          <div class="quiz-info mb-4">
+            <span class="badge bg-primary">${quiz.questions.length} Questions</span>
+            ${quiz.passing_score ? `<span class="badge bg-success">Passing Score: ${quiz.passing_score}%</span>` : ''}
+            ${quiz.time_limit_minutes > 0 ? `<span class="badge bg-warning">Time Limit: ${quiz.time_limit_minutes} min</span>` : ''}
+          </div>
+          <form id="quizForm">
+      `;
+      
+      quiz.questions.forEach((q, index) => {
+        quizHTML += `
+          <div class="quiz-question mb-4">
+            <h5>${index + 1}. ${q.question_text}</h5>
+            <div class="quiz-options">
+        `;
+        
+        q.options.forEach((option, optIndex) => {
+          quizHTML += `
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="question_${index}" 
+                     value="${optIndex}" id="q${index}_opt${optIndex}" required>
+              <label class="form-check-label" for="q${index}_opt${optIndex}">
+                ${option}
+              </label>
+            </div>
+          `;
+        });
+        
+        quizHTML += `
+            </div>
+          </div>
+        `;
+      });
+      
+      quizHTML += `
+            <button type="submit" class="btn btn-primary btn-lg">
+              <i class="bi bi-check-circle"></i> Submit Quiz
+            </button>
+          </form>
+        </div>
+      `;
+      
+      document.getElementById('lessonPlayer').innerHTML = quizHTML;
+      
+      // Hide mark complete button for quizzes
+      document.getElementById('markCompleteBtn').style.display = 'none';
+      
+      // Handle quiz submission
+      document.getElementById('quizForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        await submitQuiz(quiz.id, quiz.questions.length);
+      });
+      
+      // Start timer
+      startTimer();
+      
+    } else {
+      throw new Error('Failed to load quiz');
+    }
+  } catch (error) {
+    console.error('Error loading quiz:', error);
+    document.getElementById('lessonPlayer').innerHTML = `
+      <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle"></i> Failed to load quiz. Please try again.
+      </div>
+    `;
+  }
+}
+
+// Submit quiz
+async function submitQuiz(quizId, questionCount) {
+  const form = document.getElementById('quizForm');
+  const submitBtn = form.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
+  
+  // Collect answers
+  const answers = [];
+  for (let i = 0; i < questionCount; i++) {
+    const selected = form.querySelector(`input[name="question_${i}"]:checked`);
+    if (selected) {
+      answers.push(parseInt(selected.value));
+    } else {
+      answers.push(null);
+    }
+  }
+  
+  // Stop timer
+  stopTimer();
+  const timeSpentMinutes = Math.ceil(elapsedSeconds / 60);
+  
+  try {
+    const response = await fetch(`http://localhost:8001/api/courses/quiz/${quizId}/submit/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + accessToken
+      },
+      body: JSON.stringify({
+        answers: answers,
+        time_spent_minutes: timeSpentMinutes
+      })
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      const attempt = data.attempt;
+      
+      // Display results
+      let resultHTML = `
+        <div class="quiz-results">
+          <div class="text-center mb-4">
+            ${attempt.passed ? 
+              '<i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>' :
+              '<i class="bi bi-x-circle-fill text-danger" style="font-size: 4rem;"></i>'
+            }
+            <h2 class="mt-3">${attempt.passed ? 'Congratulations! 🎉' : 'Keep Trying! 💪'}</h2>
+            <p class="lead">You scored ${attempt.score}%</p>
+            ${attempt.passed ? 
+              '<p class="text-success">You passed the quiz!</p>' :
+              '<p class="text-danger">You need ' + attempt.passing_score + '% to pass. Try again!</p>'
+            }
+          </div>
+          <div class="quiz-stats">
+            <div class="row text-center">
+              <div class="col-md-4">
+                <h4>${attempt.correct_answers}</h4>
+                <p class="text-muted">Correct</p>
+              </div>
+              <div class="col-md-4">
+                <h4>${attempt.total_questions - attempt.correct_answers}</h4>
+                <p class="text-muted">Incorrect</p>
+              </div>
+              <div class="col-md-4">
+                <h4>${attempt.time_spent_minutes} min</h4>
+                <p class="text-muted">Time Spent</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.getElementById('lessonPlayer').innerHTML = resultHTML;
+      
+      if (attempt.passed) {
+        // Mark lesson as completed
+        const lessonItem = document.querySelector(`[data-lesson-id="${currentLessonId}"]`);
+        if (lessonItem) {
+          lessonItem.classList.add('completed');
+          const icon = lessonItem.querySelector('.lesson-nav-info i');
+          icon.className = 'bi bi-check-circle-fill text-success';
+        }
+        
+        // Show next lesson button
+        document.getElementById('nextLessonBtn').style.display = 'inline-block';
+      } else {
+        // Show retry button
+        document.getElementById('lessonPlayer').innerHTML += `
+          <div class="text-center mt-4">
+            <button class="btn btn-primary btn-lg" onclick="loadLesson('${currentLessonId}', document.getElementById('currentLessonTitle').textContent, 'quiz')">
+              <i class="bi bi-arrow-clockwise"></i> Retry Quiz
+            </button>
+          </div>
+        `;
+      }
+      
+    } else {
+      const errorData = await response.json();
+      alert(errorData.error || 'Failed to submit quiz');
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Submit Quiz';
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('An error occurred. Please try again.');
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> Submit Quiz';
+  }
+}
+
+// Mark lesson as complete
+async function markLessonComplete() {
+  const btn = document.getElementById('markCompleteBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+  
+  // Stop timer and calculate time spent
+  stopTimer();
+  const timeSpentMinutes = Math.ceil(elapsedSeconds / 60);
+  
+  try {
+    const response = await fetch(`http://localhost:8001/api/courses/lesson/${currentLessonId}/complete/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + accessToken
+      },
+      body: JSON.stringify({
+        time_spent_minutes: timeSpentMinutes
+      })
+    });
+    
+    if (response.ok) {
+      // Mark as completed in sidebar
+      const lessonItem = document.querySelector(`[data-lesson-id="${currentLessonId}"]`);
+      if (lessonItem) {
+        lessonItem.classList.add('completed');
+        const icon = lessonItem.querySelector('.lesson-nav-info i');
+        icon.className = 'bi bi-check-circle-fill text-success';
+      }
+      
+      // Update progress bar
+      const data = await response.json();
+      if (data.progress && data.progress.completion_percentage) {
+        document.getElementById('overallProgress').style.width = data.progress.completion_percentage + '%';
+        document.querySelector('.progress-text').textContent = data.progress.completion_percentage + '% Complete';
+      }
+      
+      // Show next lesson button
+      btn.style.display = 'none';
+      document.getElementById('nextLessonBtn').style.display = 'inline-block';
+      
+      alert('Lesson marked as complete! 🎉');
+    } else {
+      const errorData = await response.json();
+      alert(errorData.error || 'Failed to mark lesson as complete');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-circle"></i> Mark as Complete';
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('An error occurred. Please try again.');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check-circle"></i> Mark as Complete';
+  }
+}
+
+// Go to next lesson
+function goToNextLesson() {
+  const currentItem = document.querySelector(`[data-lesson-id="${currentLessonId}"]`);
+  const nextItem = currentItem ? currentItem.nextElementSibling : null;
+  
+  if (nextItem && nextItem.classList.contains('lesson-nav-item')) {
+    nextItem.click();
+    document.getElementById('nextLessonBtn').style.display = 'none';
+    document.getElementById('markCompleteBtn').style.display = 'inline-block';
+    document.getElementById('markCompleteBtn').disabled = false;
+    document.getElementById('markCompleteBtn').innerHTML = '<i class="bi bi-check-circle"></i> Mark as Complete';
+  } else {
+    alert('Congratulations! You have completed all lessons in this module! 🎉');
+  }
+}
+
+// Toggle sidebar on mobile
+function toggleSidebar() {
+  document.getElementById('learningSidebar').classList.toggle('active');
+}
+
+// Initialize - load current lesson
+document.addEventListener('DOMContentLoaded', function() {
+  {% if current_lesson %}
+    loadLesson('{{ current_lesson.id }}', '{{ current_lesson.title }}', '{{ current_lesson.content_type }}');
+  {% endif %}
+});
+
+// Clean up on page unload
+window.addEventListener('beforeunload', function() {
+  stopTimer();
+});
+</script>
+{% endblock %}

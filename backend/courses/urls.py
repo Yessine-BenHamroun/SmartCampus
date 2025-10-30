@@ -12,7 +12,8 @@ from courses.views import (
     FeaturedCoursesView,
     InstructorCoursesView,
     CourseModulesView,
-    ModuleLessonsView
+    ModuleLessonsView,
+    LessonDetailView
 )
 from courses.views_instructor import (
     create_course,
@@ -50,6 +51,15 @@ from courses.views_ai import (
     create_quiz_from_ai,
     generate_assignment_ai,
     create_assignment_from_ai
+)
+from courses.views_progress import (
+    get_student_progress,
+    get_all_student_progress,
+    update_lesson_progress,
+    submit_course_review,
+    get_course_reviews,
+    submit_instructor_review,
+    get_instructor_reviews
 )
 
 app_name = 'courses'
@@ -99,16 +109,28 @@ urlpatterns = [
     # Course CRUD
     path('', CourseListView.as_view(), name='course-list'),
     path('featured/', FeaturedCoursesView.as_view(), name='featured-courses'),
+    
+    # Specific patterns MUST come before generic <str:course_id>
+    path('my/enrollments/', MyEnrollmentsView.as_view(), name='my-enrollments'),
+    path('progress/my/', get_all_student_progress, name='my-progress'),
+    path('module/<str:module_id>/lessons/', ModuleLessonsView.as_view(), name='module-lessons'),
+    path('lesson/<str:lesson_id>/', LessonDetailView.as_view(), name='lesson-detail'),
+    path('lesson/<str:lesson_id>/complete/', update_lesson_progress, name='complete-lesson'),
     path('instructor/<str:instructor_id>/', InstructorCoursesView.as_view(), name='instructor-courses'),
+    
+    # Generic course patterns (MUST come after specific patterns)
     path('<str:course_id>/', CourseDetailView.as_view(), name='course-detail'),
     path('<str:course_id>/modules/', CourseModulesView.as_view(), name='course-modules'),
-    path('module/<str:module_id>/lessons/', ModuleLessonsView.as_view(), name='module-lessons'),
-    
-    # Enrollment
     path('<str:course_id>/enroll/', EnrollCourseView.as_view(), name='enroll-course'),
-    path('my/enrollments/', MyEnrollmentsView.as_view(), name='my-enrollments'),
     path('<str:course_id>/progress/', UpdateProgressView.as_view(), name='update-progress'),
-    
-    # Reviews
     path('<str:course_id>/reviews/', CourseReviewsView.as_view(), name='course-reviews'),
+    path('<str:course_id>/progress/details/', get_student_progress, name='course-progress'),
+    
+    # Course Reviews & Feedback
+    path('<str:course_id>/review/submit/', submit_course_review, name='submit-course-review'),
+    path('<str:course_id>/review/list/', get_course_reviews, name='get-course-reviews'),
+    
+    # Instructor Reviews & Feedback
+    path('instructor/<str:instructor_id>/course/<str:course_id>/review/', submit_instructor_review, name='submit-instructor-review'),
+    path('instructor/<str:instructor_id>/reviews/', get_instructor_reviews, name='get-instructor-reviews'),
 ]

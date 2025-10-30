@@ -69,4 +69,12 @@ urlpatterns = [
     path('instructor/certification/<str:certification_id>/steps/add/', views.add_certification_step_view, name='add_certification_step'),
     path('instructor/certification/step/<str:step_id>/delete/', views.delete_certification_step_view, name='delete_certification_step'),
     path('my-badges/', views.my_badges_view, name='my_badges'),
+    # Progress & Feedback URLs
+    path('my-progress/', views.my_progress_view, name='my_progress'),
+    path('course/<str:course_id>/progress/', views.course_progress_view, name='course_progress'),
+    path('course/<str:course_id>/review/', views.submit_course_review_view, name='submit_course_review'),
+    path('instructor/<str:instructor_id>/course/<str:course_id>/review/', views.submit_instructor_review_view, name='submit_instructor_review'),
+    
+    # Course Learning
+    path('course/<str:course_id>/learn/', views.course_learning_view, name='course_learning'),
 ]

@@ -544,3 +544,48 @@ class ModuleLessonsView(APIView):
                 'error': 'Failed to fetch lessons',
                 'detail': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class LessonDetailView(APIView):
+    """Get lesson details (requires enrollment)"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, lesson_id):
+        """Get lesson content"""
+        try:
+            from courses.extended_models import Lesson, Module
+            
+            # Get lesson
+            lesson = Lesson.find_by_id(lesson_id)
+            if not lesson:
+                return Response({
+                    'error': 'Lesson not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # Get module to get course_id
+            module = Module.find_by_id(str(lesson.module_id))
+            if not module:
+                return Response({
+                    'error': 'Module not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # Check if user is enrolled in the course
+            student_id = str(request.user.id)
+            course_id = str(module.course_id)
+            
+            enrollment = Enrollment.find_one(student_id, course_id)
+            if not enrollment and not lesson.is_free_preview:
+                return Response({
+                    'error': 'You must be enrolled to access this lesson'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            # Return lesson data
+            return Response({
+                'lesson': lesson.to_dict()
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'error': 'Failed to fetch lesson',
+                'detail': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

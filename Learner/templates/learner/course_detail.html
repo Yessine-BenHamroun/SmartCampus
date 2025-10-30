@@ -1,6 +1,11 @@
-{% extends 'learner/base.html' %} {% load static %} {% block title %}{{
-course.title }} - SmartCampus{% endblock %} {% block body_class
-%}course-detail-page{% endblock %} {% block content %}
+{% extends 'learner/base.html' %}
+{% load static %}
+
+{% block title %}{{ course.title }} - SmartCampus{% endblock %}
+
+{% block body_class %}course-detail-page{% endblock %}
+
+{% block content %}
 <!-- Page Header -->
 <section class="page-header section light-background">
   <div class="container">
@@ -221,13 +226,8 @@ course.title }} - SmartCampus{% endblock %} {% block body_class
               progress.certification_id == cert.id %}
               <div class="cert-progress">
                 <div class="progress-info">
-                  <span
-                    >Progress: {{ progress.current_step }}/{{ cert.total_steps
-                    }} steps</span
-                  >
-                  <span
-                    class="badge {% if progress.status == 'completed' %}bg-success{% elif progress.status == 'in_progress' %}bg-primary{% elif progress.status == 'failed' %}bg-danger{% else %}bg-secondary{% endif %}"
-                  >
+                  <span>Progress: {{ progress.current_step }}/{{ cert.total_steps }} steps</span>
+                  <span class="badge {% if progress.status == 'completed' %}bg-success{% elif progress.status == 'in_progress' %}bg-primary{% elif progress.status == 'failed' %}bg-danger{% else %}bg-secondary{% endif %}">
                     {{ progress.status|title }}
                   </span>
                 </div>
@@ -255,8 +255,8 @@ course.title }} - SmartCampus{% endblock %} {% block body_class
               {% endif %} {% endfor %} {% endif %}
 
               <!-- Show enrollment button if not enrolled in certification -->
-              {% if is_enrolled and cert.is_active %} {% if not my_progress or
-              not my_progress|length %}
+              {% if is_enrolled and cert.is_active %}
+              {% if not my_progress or not my_progress|length %}
               <button
                 class="btn btn-outline-primary btn-sm mt-3 enroll-cert-btn"
                 data-cert-id="{{ cert.id }}"
@@ -264,10 +264,14 @@ course.title }} - SmartCampus{% endblock %} {% block body_class
               >
                 <i class="bi bi-award"></i> Start Certification
               </button>
-              {% else %} {% with has_progress=False %} {% for progress in
-              my_progress %} {% if progress.certification_id == cert.id %} {%
-              with has_progress=True %}{% endwith %} {% endif %} {% endfor %} {%
-              if not has_progress %}
+              {% else %}
+              {% with has_progress=False %}
+              {% for progress in my_progress %}
+              {% if progress.certification_id == cert.id %}
+              {% with has_progress=True %}{% endwith %}
+              {% endif %}
+              {% endfor %}
+              {% if not has_progress %}
               <button
                 class="btn btn-outline-primary btn-sm mt-3 enroll-cert-btn"
                 data-cert-id="{{ cert.id }}"
@@ -354,16 +358,20 @@ course.title }} - SmartCampus{% endblock %} {% block body_class
             <div class="price">${{ course.price }}</div>
             {% else %}
             <div class="price free">Free</div>
-            {% endif %} {% if user.role == 'instructor' %}
-            <div class="alert alert-info">
-              <i class="bi bi-info-circle"></i> You are viewing this as an
-              instructor. {% if course.instructor_id == user.id or
-              course.instructor_id == user.email %}
-              <a
-                href="{% url 'edit_course' course.id %}"
-                class="btn btn-sm btn-primary mt-2 w-100"
-              >
-                <i class="bi bi-pencil"></i> Edit This Course
+            {% endif %}
+            
+            {% if user.role == 'instructor' %}
+              <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> You are viewing this as an instructor. 
+                {% if course.instructor_id == user.id %}
+                  <a href="{% url 'edit_course' course.id %}" class="btn btn-sm btn-primary mt-2 w-100">
+                    <i class="bi bi-pencil"></i> Edit This Course
+                  </a>
+                {% endif %}
+              </div>
+            {% elif is_enrolled %}
+              <a href="{% url 'course_learning' course.id %}" class="btn btn-success btn-lg w-100">
+                <i class="bi bi-play-circle"></i> Continue Learning
               </a>
               {% endif %}
             </div>
@@ -378,6 +386,7 @@ course.title }} - SmartCampus{% endblock %} {% block body_class
               <i class="bi bi-check-circle"></i> You're enrolled!
             </p>
             {% else %}
+<<<<<<< HEAD
             <button
               id="enrollBtn"
               class="btn btn-primary btn-lg w-100 mb-2"
@@ -385,6 +394,12 @@ course.title }} - SmartCampus{% endblock %} {% block body_class
             >
               <i class="bi bi-bookmark-plus"></i> Enroll Now
             </button>
+=======
+              <button id="enrollBtn" class="btn btn-primary btn-lg w-100" onclick="enrollInCourse()">
+                <i class="bi bi-bookmark-plus"></i> Start Learning
+              </button>
+              <p class="text-center text-muted">30-Day Money-Back Guarantee</p>
+>>>>>>> 30d1cdd8992764a11019f7d1f8bfbc8eb1300aee
             {% endif %}
           </div>
 
@@ -813,7 +828,17 @@ course.title }} - SmartCampus{% endblock %} {% block body_class
 </style>
 
 <script>
-  const courseId = "{{ course.id }}";
+// Debug: Log authentication status on page load
+console.log('=== COURSE DETAIL PAGE DEBUG ===');
+console.log('Is Authenticated:', {{ is_authenticated|yesno:"true,false" }});
+console.log('Current User:', '{% if current_user %}{{ current_user.email|default:"Unknown" }}{% else %}None{% endif %}');
+console.log('Access Token Exists:', '{{ request.session.access_token }}' ? 'Yes' : 'No');
+console.log('Access Token Length:', '{{ request.session.access_token }}'.length);
+console.log('Access Token (first 50 chars):', '{{ request.session.access_token }}'.substring(0, 50));
+console.log('Is Enrolled:', {{ is_enrolled|yesno:"true,false" }});
+console.log('================================');
+
+const courseId = '{{ course.id }}';
 
   async function enrollInCourse() {
     const enrollBtn = document.getElementById("enrollBtn");
@@ -821,35 +846,69 @@ course.title }} - SmartCampus{% endblock %} {% block body_class
     enrollBtn.innerHTML =
       '<span class="spinner-border spinner-border-sm me-2"></span>Enrolling...';
 
+  // Debug: Check if token exists
+  let token = '{{ request.session.access_token }}';
+  const refreshToken = '{{ request.session.refresh_token }}';
+  console.log('Access token exists:', token ? 'Yes' : 'No');
+  console.log('Token length:', token.length);
+  
+  if (!token || token.length === 0) {
+    alert('You must be logged in to enroll. Please log in first.');
+    window.location.href = '{% url "login" %}?next={{ request.path }}';
+    return;
+  }
+
+  try {
+    // First, try to refresh the token to ensure it's valid
+    console.log('Attempting to refresh token...');
     try {
-      const response = await fetch(
-        `http://localhost:8001/api/courses/${courseId}/enroll/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer {{ request.session.access_token }}",
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert("Successfully enrolled in the course!");
-        window.location.reload();
-      } else if (response.status === 401 || response.status === 403) {
-        alert("Please log in to enroll in this course");
-        window.location.href = '{% url "login" %}?next={{ request.path }}';
+      const refreshResponse = await fetch('http://localhost:8001/api/token/refresh/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          refresh: refreshToken
+        })
+      });
+      
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json();
+        token = refreshData.access;
+        console.log('Token refreshed successfully');
+        
+        // Update session token via a hidden form or AJAX call to backend
+        // For now, we'll use the new token directly
       } else {
-        alert(data.error || "Failed to enroll in course");
-        enrollBtn.disabled = false;
-        enrollBtn.innerHTML =
-          '<i class="bi bi-bookmark-plus"></i> Start Learning';
+        console.log('Token refresh failed, using existing token');
       }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("An error occurred. Please try again.");
+    } catch (refreshError) {
+      console.log('Token refresh error:', refreshError);
+    }
+    
+    // Now try to enroll with the token
+    const response = await fetch(`http://localhost:8001/api/courses/${courseId}/enroll/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      }
+    });
+
+    const data = await response.json();
+    
+    console.log('Enrollment Response Status:', response.status);
+    console.log('Enrollment Response Data:', data);
+
+    if (response.ok) {
+      alert('Successfully enrolled in the course!');
+      window.location.href = '{% url "course_learning" course.id %}';
+    } else if (response.status === 401 || response.status === 403) {
+      console.error('Authentication error:', data);
+      alert('Authentication failed: ' + (data.detail || data.error || 'Please log in again'));
+      window.location.href = '{% url "login" %}?next={{ request.path }}';
+    } else {
+      alert(data.error || 'Failed to enroll in course');
       enrollBtn.disabled = false;
       enrollBtn.innerHTML =
         '<i class="bi bi-bookmark-plus"></i> Start Learning';

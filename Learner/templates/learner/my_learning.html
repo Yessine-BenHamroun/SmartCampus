@@ -109,7 +109,7 @@
                       <i class="bi bi-clock"></i> {{ course.duration_hours|default:0 }}h
                     </span>
                   </div>
-                  <a href="{% url 'course_detail' course.id %}" class="btn btn-sm btn-outline-primary w-100">
+                  <a href="{% url 'course_learning' course.id %}" class="btn btn-sm btn-outline-primary w-100">
                     <i class="bi bi-play-circle"></i> Continue Learning
                   </a>
                 </div>

@@ -301,11 +301,11 @@ function generateWithAI() {
   btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generating...';
   
   // Call AI generation API
-  fetch(`/api/courses/instructor/lesson/${lessonId}/quiz/generate/`, {
+  fetch(`http://localhost:8001/api/courses/instructor/lesson/${lessonId}/quiz/generate/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+      'Authorization': 'Bearer {{ access_token }}'
     },
     body: JSON.stringify({
       num_questions: parseInt(numQuestions),
@@ -397,11 +397,11 @@ function handleSubmit(e) {
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creating...';
   
-  fetch(`/api/courses/instructor/lesson/{{ lesson_id }}/quiz/create/`, {
+  fetch(`http://localhost:8001/api/courses/instructor/lesson/{{ lesson_id }}/quiz/create/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+      'Authorization': 'Bearer {{ access_token }}'
     },
     body: JSON.stringify(formData)
   })
